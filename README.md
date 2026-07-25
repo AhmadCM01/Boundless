@@ -1,4 +1,6 @@
-# 🌐 Boundless — Real-Time Collaborative Infinite Canvas
+# Boundless — Real-Time Collaborative Infinite Canvas
+
+**Live Production Deployment:** [https://boundless-4zml.onrender.com](https://boundless-4zml.onrender.com)
 
 [![Production Live](https://img.shields.io/badge/Production-Live%20on%20Render-brightgreen?style=for-the-badge&logo=render)](https://boundless-4zml.onrender.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -10,7 +12,7 @@
 
 ---
 
-## 🎯 Project Pitch & Overview
+## Project Pitch & Overview
 
 Traditional whiteboard tools often struggle with performance degradation under heavy object loads, sync conflicts across unstable networks, and bloated state payloads when transferring media assets. 
 
@@ -22,7 +24,7 @@ Traditional whiteboard tools often struggle with performance degradation under h
 
 ---
 
-## ✨ Working Features
+## Working Features
 
 | Feature | Description |
 | :--- | :--- |
@@ -39,7 +41,7 @@ Traditional whiteboard tools often struggle with performance degradation under h
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 Boundless utilizes a unified Node.js/Fastify architecture serving both static production assets and WebSocket CRDT sync on a single port.
 
@@ -75,7 +77,7 @@ Boundless utilizes a unified Node.js/Fastify architecture serving both static pr
 
 ---
 
-## 🚧 Known Limitations (End of Day 1 Checkpoint)
+## Known Limitations (End of Day 1 Checkpoint)
 
 - **Text/Sticky Note Edit State**: The React-Konva edit overlay is currently throwing a `Cannot read properties` error during the write-state due to uninitialized Yjs object properties. (Pending strict null-guard implementation).
 - **Session Travel (Replay) Divergence**: Client-side initialization of the scratch Y.Doc is dropping the base state, leading to delta divergence during playback.
@@ -84,15 +86,16 @@ Boundless utilizes a unified Node.js/Fastify architecture serving both static pr
 
 ---
 
-## 🚀 Day 2 Roadmap (Next Steps)
+## Day 2 Roadmap (Next Steps)
 
 - **Priority 1**: Stabilize the text edit overlay with safe DOM portals.
 - **Priority 2**: Implement CSS media queries to replace the current `overflowX` mobile wrappers.
 - **Priority 3**: Throttle Matter.js physics calculations to local client states, syncing to Yjs only on rest.
+- **Priority 4 (Advanced Content Tools)**: Implement Multi-select bounding boxes, Object Grouping (treating multiple CRDT nodes as a single transformable entity), and Align/Distribute algorithms (calculating delta offsets for even spacing).
 
 ---
 
-## 🎨 Frontend Logic & Performance Engineering
+## Frontend Logic & Performance Engineering
 
 ### 1. High-Performance 2D Rendering
 - **Konva.js Integration**: Canvas objects are rendered using React-Konva nodes wrapped in custom `React.memo` components.
@@ -106,7 +109,7 @@ Boundless utilizes a unified Node.js/Fastify architecture serving both static pr
 
 ---
 
-## 🔄 Backend & State Management Logic
+## Backend & State Management Logic
 
 ### 1. Conflict-Free Replicated Data Types (Yjs CRDTs)
 - State resides in a shared `Y.Doc` instance containing a `Y.Map<CanvasObject>('objects')`.
@@ -122,7 +125,7 @@ Boundless utilizes a unified Node.js/Fastify architecture serving both static pr
 
 ---
 
-## 📐 SDLC & Development Approach
+## SDLC & Development Approach
 
 We adopted a **Component-Driven Development (CDD)** workflow during this sprint:
 
@@ -134,7 +137,7 @@ We adopted a **Component-Driven Development (CDD)** workflow during this sprint:
 
 ---
 
-## 🛠️ Local Setup & Run Instructions
+## Local Setup & Run Instructions
 
 ### Prerequisites
 - **Node.js**: v18.0.0 or higher
@@ -164,12 +167,12 @@ The application will be accessible locally at `http://localhost:3000`.
 
 ---
 
-## 📦 Submission Packaging & Git Commands
+## Submission Packaging & Git Commands
 
 ### Git Commit & Push
 ```bash
 git add .
-git commit -m "docs: finalize system architecture README and prune orphaned files for submission"
+git commit -m "docs: sanitize README for 5PM deadline, add prominent live URL and Priority 4 roadmap"
 git push origin main
 ```
 
@@ -178,14 +181,10 @@ To generate a clean submission ZIP file excluding `.git`, `node_modules`, and bu
 
 **PowerShell (Windows)**:
 ```powershell
-Compress-Archive -Path .\.gitignore, .\README.md, .\package.json, .\package-lock.json, .\index.html, .\tsconfig.json, .\tsconfig.server.json, .\vite.config.ts, .\public, .\src -DestinationPath ..\Boundless_Submission.zip -Force
+Compress-Archive -Path .\.gitignore, .\README.md, .\package.json, .\package-lock.json, .\index.html, .\tsconfig.json, .\tsconfig.server.json, .\vite.config.ts, .\public, .\src -DestinationPath ..\Boundless_5PM_Checkpoint.zip -Force
 ```
 
 **Bash / Linux / macOS**:
 ```bash
-zip -r Boundless_Submission.zip . -x "node_modules/*" ".git/*" "dist/*" "*.log"
+zip -r Boundless_5PM_Checkpoint.zip . -x "node_modules/*" ".git/*" "dist/*" "*.log" "*.zip"
 ```
-
----
-
-*Engineered with precision for the Hackathon Submission.*
