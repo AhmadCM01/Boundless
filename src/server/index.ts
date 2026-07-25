@@ -48,6 +48,15 @@ interface DeltaRecord {
 }
 const roomHistoryMap = new Map<string, DeltaRecord[]>();
 
+// Utility to clean and extract exact Yjs Room Name from request URL
+function extractRoomName(reqUrl: string): string {
+  const urlObj = new URL(reqUrl, 'http://localhost');
+  const queryRoom = urlObj.searchParams.get('room');
+  if (queryRoom) return queryRoom;
+  const pathClean = urlObj.pathname.replace(/^\/yjs\/?/, '').replace(/^\//, '');
+  return pathClean || 'default-room';
+}
+
 // Asset Upload Endpoint
 fastify.post('/api/assets', async (request, reply) => {
   const data = await request.file();
@@ -91,6 +100,7 @@ fastify.get('/api/assets/:id', async (request, reply) => {
 fastify.get('/api/rooms/:id/history', async (request, reply) => {
   const { id } = request.params as { id: string };
   const history = roomHistoryMap.get(id) || [];
+  console.log(`📜 History requested for room [${id}]: ${history.length} deltas found.`);
   return reply.send({
     roomId: id,
     count: history.length,
@@ -121,22 +131,22 @@ if (fs.existsSync(clientDistPath)) {
 const wss = new WebSocketServer({ noServer: true });
 
 wss.on('connection', (conn, req) => {
-  const url = req.url || '';
-  const urlObj = new URL(url, 'http://localhost');
-  const room = urlObj.searchParams.get('room') || url.replace('/yjs', '').replace('/', '') || 'default-room';
+  const reqUrl = req.url || '';
+  const roomName = extractRoomName(reqUrl);
 
-  setupWSConnection(conn, req, { docName: room });
+  setupWSConnection(conn, req, { docName: roomName });
 
   // Attach Y.Doc update listener for session replay history tracking
   try {
-    const doc = getYDoc(room);
+    const doc = getYDoc(roomName);
     if (doc && !doc._historySubscribed) {
       doc._historySubscribed = true;
+      console.log(`📡 Subscribed history update tracking for room: [${roomName}]`);
       doc.on('update', (update: Uint8Array) => {
-        let history = roomHistoryMap.get(room);
+        let history = roomHistoryMap.get(roomName);
         if (!history) {
           history = [];
-          roomHistoryMap.set(room, history);
+          roomHistoryMap.set(roomName, history);
         }
         history.push({
           timestamp: Date.now(),

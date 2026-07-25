@@ -48,7 +48,7 @@ const BackgroundGrid: React.FC<{
           x={x}
           y={y}
           radius={1.5}
-          fill="var(--grid-dot)"
+          fill="#3f3f46"
           listening={false}
         />
       );
