@@ -164,27 +164,3 @@ npm start
 ```
 
 The application will be accessible locally at `http://localhost:3000`.
-
----
-
-## Submission Packaging & Git Commands
-
-### Git Commit & Push
-```bash
-git add .
-git commit -m "docs: sanitize README for 5PM deadline, add prominent live URL and Priority 4 roadmap"
-git push origin main
-```
-
-### Packaging Repository into ZIP
-To generate a clean submission ZIP file excluding `.git`, `node_modules`, and build artifacts:
-
-**PowerShell (Windows)**:
-```powershell
-Compress-Archive -Path .\.gitignore, .\README.md, .\package.json, .\package-lock.json, .\index.html, .\tsconfig.json, .\tsconfig.server.json, .\vite.config.ts, .\public, .\src -DestinationPath ..\Boundless_5PM_Checkpoint.zip -Force
-```
-
-**Bash / Linux / macOS**:
-```bash
-zip -r Boundless_5PM_Checkpoint.zip . -x "node_modules/*" ".git/*" "dist/*" "*.log" "*.zip"
-```
