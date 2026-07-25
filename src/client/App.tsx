@@ -12,16 +12,29 @@ import { ReactionsBar } from './components/ReactionsBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Konva from 'konva';
 
+import { TextEditOverlay } from './components/TextEditOverlay';
+
 export const AppContent: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ToolMode>('select');
   const [stageX, setStageX] = useState(0);
   const [stageY, setStageY] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false);
   const [isReplayOpen, setIsReplayOpen] = useState(false);
   const [followingUserId, setFollowingUserId] = useState<string | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
+
+  useEffect(() => {
+    const handleCustomTrigger = (e: any) => {
+      if (e.detail?.id) {
+        setEditingId(e.detail.id);
+      }
+    };
+    window.addEventListener('boundless-trigger-text-edit', handleCustomTrigger);
+    return () => window.removeEventListener('boundless-trigger-text-edit', handleCustomTrigger);
+  }, []);
 
   const handleToolSelect = (tool: ToolMode) => {
     if (tool === 'audio') {
@@ -84,6 +97,14 @@ export const AppContent: React.FC = () => {
       />
 
       <GuestModal />
+
+      <TextEditOverlay
+        editingId={editingId}
+        onClose={() => setEditingId(null)}
+        stageX={stageX}
+        stageY={stageY}
+        zoom={zoom}
+      />
 
       {isAudioRecorderOpen && (
         <AudioRecorder

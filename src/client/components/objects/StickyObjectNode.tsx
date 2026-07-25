@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useRef, useEffect } from 'react';
 import { Rect, Text, Group, Transformer } from 'react-konva';
 import { StickyObject } from '../../../shared/types';
 import Konva from 'konva';
@@ -17,41 +16,8 @@ export const StickyObjectNode: React.FC<Props> = ({
   onSelect,
   onChange,
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [textValue, setTextValue] = useState<string>(typeof object.text === 'string' ? object.text : '');
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const mountTimeRef = useRef<number>(0);
-
-  useEffect(() => {
-    setTextValue(typeof object.text === 'string' ? object.text : '');
-  }, [object.text]);
-
-  // Listen for custom trigger edit event from property bar or keyboard shortcut
-  useEffect(() => {
-    const handleCustomTrigger = (e: any) => {
-      if (e.detail && e.detail.id === object.id) {
-        mountTimeRef.current = Date.now();
-        setIsEditing(true);
-      }
-    };
-    window.addEventListener('boundless-trigger-text-edit', handleCustomTrigger);
-    return () => window.removeEventListener('boundless-trigger-text-edit', handleCustomTrigger);
-  }, [object.id]);
-
-  // Auto-focus and select textarea text on edit modal mount
-  useEffect(() => {
-    if (isEditing) {
-      const timer = setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.select();
-        }
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isEditing]);
 
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
@@ -61,25 +27,8 @@ export const StickyObjectNode: React.FC<Props> = ({
   }, [isSelected]);
 
   const handleTriggerEdit = () => {
-    mountTimeRef.current = Date.now();
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    setIsEditing(false);
-    if (!object || !onChange) return;
-    const safeValue = typeof textValue === 'string' ? textValue.trim() : '';
-    const safeExisting = typeof object?.text === 'string' ? object.text : '';
-    if (safeValue !== safeExisting) {
-      onChange({ text: safeValue || 'Sticky note...' });
-    }
-  };
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (Date.now() - mountTimeRef.current < 300) {
-      return;
-    }
-    handleSave();
+    const event = new CustomEvent('boundless-trigger-text-edit', { detail: { id: object.id } });
+    window.dispatchEvent(event);
   };
 
   return (
@@ -89,7 +38,7 @@ export const StickyObjectNode: React.FC<Props> = ({
         x={object?.x ?? 0}
         y={object?.y ?? 0}
         rotation={object?.rotation ?? 0}
-        draggable={!isEditing}
+        draggable={true}
         onClick={(e) => {
           e.cancelBubble = true;
           onSelect();
@@ -151,7 +100,7 @@ export const StickyObjectNode: React.FC<Props> = ({
         />
       </Group>
 
-      {isSelected && !isEditing && (
+      {isSelected && (
         <Transformer
           ref={trRef}
           onClick={(e) => {
@@ -167,88 +116,6 @@ export const StickyObjectNode: React.FC<Props> = ({
             return newBox;
           }}
         />
-      )}
-
-      {/* HTML Sticky Note Editing Modal Portal */}
-      {isEditing && ReactDOM.createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999,
-          }}
-          onClick={handleBackdropClick}
-        >
-          <div
-            className="glass-panel animate-fade-in"
-            style={{ width: 400, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Edit Sticky Note</h4>
-            <textarea
-              ref={textareaRef}
-              value={textValue ?? object?.text ?? ''}
-              onChange={(e) => {
-                e.stopPropagation();
-                const val = e?.target?.value;
-                setTextValue(typeof val === 'string' ? val : '');
-              }}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSave();
-                } else if (e.key === 'Escape') {
-                  e.preventDefault();
-                  setIsEditing(false);
-                }
-              }}
-              onKeyUp={(e) => e.stopPropagation()}
-              onKeyPress={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              rows={5}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: 10,
-                background: 'var(--bg-input)',
-                border: '1px solid var(--input-border)',
-                color: 'var(--text-main)',
-                fontSize: 16,
-                fontFamily: 'Inter',
-                resize: 'vertical',
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="tool-btn"
-                style={{ padding: '8px 16px', width: 'auto', height: 'auto', fontSize: 13 }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="btn-primary"
-                style={{ padding: '8px 20px', fontSize: 14 }}
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
       )}
     </>
   );

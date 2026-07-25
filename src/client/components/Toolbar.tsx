@@ -209,12 +209,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         bottom: 24,
         left: '50%',
         transform: 'translateX(-50%)',
-        height: 56,
-        padding: '0 12px',
+        minHeight: 56,
+        height: 'auto',
+        padding: '6px 12px',
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap' as const,
         gap: 6,
         maxWidth: 'calc(100vw - 24px)',
+        overflow: 'visible',
         zIndex: 100,
       }}
     >
