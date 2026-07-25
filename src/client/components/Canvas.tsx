@@ -128,12 +128,12 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // Viewport Culling Engine
   const visibleObjects = useViewportCulling({
-    objects: canvasObjects,
+    canvasObjects,
     stageX,
     stageY,
     zoom,
-    screenWidth: windowDimensions.width,
-    screenHeight: windowDimensions.height,
+    windowWidth: windowDimensions.width,
+    windowHeight: windowDimensions.height,
   });
 
   // Wheel Zoom Listener

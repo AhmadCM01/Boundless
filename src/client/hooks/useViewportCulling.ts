@@ -2,37 +2,43 @@ import { useMemo } from 'react';
 import { CanvasObject } from '../../shared/types';
 
 interface ViewportCullingParams {
-  canvasObjects: Map<string, CanvasObject>;
+  canvasObjects?: Map<string, CanvasObject>;
+  objects?: Map<string, CanvasObject>;
   stageX: number;
   stageY: number;
   zoom: number;
-  windowWidth: number;
-  windowHeight: number;
+  windowWidth?: number;
+  windowHeight?: number;
+  screenWidth?: number;
+  screenHeight?: number;
   bufferMargin?: number;
 }
 
-export function useViewportCulling({
-  canvasObjects,
-  stageX,
-  stageY,
-  zoom,
-  windowWidth,
-  windowHeight,
-  bufferMargin = 250,
-}: ViewportCullingParams): CanvasObject[] {
+export function useViewportCulling(params: ViewportCullingParams): CanvasObject[] {
+  const targetMap = params.canvasObjects || params.objects;
+  const stageX = params.stageX || 0;
+  const stageY = params.stageY || 0;
+  const zoom = params.zoom || 1;
+  const width = params.windowWidth || params.screenWidth || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const height = params.windowHeight || params.screenHeight || (typeof window !== 'undefined' ? window.innerHeight : 800);
+  const bufferMargin = params.bufferMargin ?? 250;
+
   return useMemo(() => {
-    if (canvasObjects.size === 0) return [];
+    if (!targetMap || typeof targetMap.size !== 'number' || targetMap.size === 0) {
+      return [];
+    }
 
     // Calculate visible bounding box in world canvas coordinates
     const minX = (0 - stageX) / zoom - bufferMargin;
-    const maxX = (windowWidth - stageX) / zoom + bufferMargin;
+    const maxX = (width - stageX) / zoom + bufferMargin;
     const minY = (0 - stageY) / zoom - bufferMargin;
-    const maxY = (windowHeight - stageY) / zoom + bufferMargin;
+    const maxY = (height - stageY) / zoom + bufferMargin;
 
     const visible: CanvasObject[] = [];
 
-    canvasObjects.forEach((obj) => {
-      // Calculate object bounding box (handling circle radius or standard width/height)
+    targetMap.forEach((obj) => {
+      if (!obj) return;
+      // Calculate object bounding box
       const objWidth = obj.width || 100;
       const objHeight = obj.height || 100;
 
@@ -55,5 +61,5 @@ export function useViewportCulling({
 
     // Sort by zIndex for proper layer stacking
     return visible.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-  }, [canvasObjects, stageX, stageY, zoom, windowWidth, windowHeight, bufferMargin]);
+  }, [targetMap, stageX, stageY, zoom, width, height, bufferMargin]);
 }
