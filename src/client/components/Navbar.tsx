@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
 import { BrandLogo } from './BrandLogo';
-import { Share2, Check, Wifi, WifiOff, Sun, Moon } from 'lucide-react';
+import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { roomId, username, userColor, onlineUsers, isConnected, setUsername } = useRoom();
+  const { roomId, username, userColor, onlineUsers, isConnected, setUsername, logout } = useRoom();
   const [copied, setCopied] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempName, setTempName] = useState(username || '');
@@ -162,6 +162,23 @@ export const Navbar: React.FC = () => {
         >
           {copied ? <Check size={16} /> : <Share2 size={16} />}
           <span>{copied ? 'Link Copied!' : 'Share Room'}</span>
+        </button>
+
+        {/* Log Out Button */}
+        <button
+          onClick={logout}
+          className="tool-btn"
+          title="Log Out (Clear Guest Session)"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            border: '1px solid var(--bg-panel-border)',
+            background: 'var(--btn-hover-bg)',
+            color: '#ef4444',
+          }}
+        >
+          <LogOut size={18} />
         </button>
       </div>
 

@@ -24,6 +24,7 @@ interface RoomContextType {
   updateViewport: (bounds: ViewportBounds) => void;
   onlineUsers: UserAwareness[];
   isConnected: boolean;
+  logout: () => void;
 }
 
 const RoomContext = createContext<RoomContextType | null>(null);
@@ -183,6 +184,16 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [provider]);
 
+  const logout = useCallback(() => {
+    sessionStorage.removeItem('boundless_username');
+    sessionStorage.removeItem('boundless_color');
+    if (provider) {
+      provider.awareness.setLocalState(null);
+      provider.disconnect();
+    }
+    setUsernameState(null);
+  }, [provider]);
+
   return (
     <RoomContext.Provider
       value={{
@@ -200,6 +211,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateViewport,
         onlineUsers,
         isConnected,
+        logout,
       }}
     >
       {children}
