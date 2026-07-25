@@ -112,11 +112,11 @@ export const TextObjectNode: React.FC<Props> = ({
       >
         <Text
           ref={textRef}
-          text={object.text}
-          fontSize={object.fontSize || 20}
-          fontFamily={object.fontFamily || 'Inter'}
-          fill={object.fill || '#e5e7eb'}
-          width={object.width}
+          text={object?.text || ''}
+          fontSize={object?.fontSize || 20}
+          fontFamily={object?.fontFamily || 'Inter'}
+          fill={object?.fill || '#e5e7eb'}
+          width={object?.width}
           wrap="word"
           opacity={isEditing ? 0.3 : 1}
           onTransformEnd={() => {

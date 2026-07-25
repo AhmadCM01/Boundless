@@ -215,7 +215,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         alignItems: 'center',
         gap: 6,
         maxWidth: 'calc(100vw - 24px)',
-        overflowX: 'auto',
         zIndex: 100,
       }}
     >
@@ -258,7 +257,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           title="Shapes Menu"
           className={`tool-btn ${isShapeFlyoutOpen ? 'active' : ''}`}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
             setIsShapeFlyoutOpen(!isShapeFlyoutOpen);
             setIsOverflowOpen(false);
           }}

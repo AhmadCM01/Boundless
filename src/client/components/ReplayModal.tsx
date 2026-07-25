@@ -53,25 +53,39 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
 
   // Apply Y.Doc binary deltas sequentially up to currentIndex
   useEffect(() => {
-    if (updates.length === 0) return;
+    if (!updates || updates.length === 0) return;
 
+    // Instantiate fresh Y.Doc instance for scratch replay
     const scratchDoc = new Y.Doc();
     const scratchMap = scratchDoc.getMap<CanvasObject>('objects');
 
-    for (let i = 0; i <= currentIndex && i < updates.length; i++) {
-      try {
-        const bytes = base64ToUint8Array(updates[i].deltaBase64);
-        Y.applyUpdate(scratchDoc, bytes);
-      } catch (e) {
-        console.error('Failed to apply update delta index:', i, e);
+    try {
+      // Step 1: Always apply base state snapshot updates[0] first
+      if (updates[0] && updates[0].deltaBase64) {
+        const baseBytes = base64ToUint8Array(updates[0].deltaBase64);
+        Y.applyUpdate(scratchDoc, baseBytes);
       }
+
+      // Step 2: Sequentially apply historical deltas from index 1 up to currentIndex
+      for (let i = 1; i <= currentIndex && i < updates.length; i++) {
+        if (updates[i] && updates[i].deltaBase64) {
+          const bytes = base64ToUint8Array(updates[i].deltaBase64);
+          Y.applyUpdate(scratchDoc, bytes);
+        }
+      }
+
+      const objs: CanvasObject[] = [];
+      scratchMap.forEach((val) => {
+        if (val && typeof val === 'object' && val.id) {
+          objs.push(val);
+        }
+      });
+      setReplayObjects(objs);
+    } catch (e) {
+      console.error('Failed to reconstruct scratchDoc replay state:', e);
+    } finally {
+      scratchDoc.destroy();
     }
-
-    const objs: CanvasObject[] = [];
-    scratchMap.forEach((val) => objs.push(val));
-    setReplayObjects(objs);
-
-    scratchDoc.destroy();
   }, [currentIndex, updates]);
 
   // Playback Animation Interval

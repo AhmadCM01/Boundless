@@ -125,9 +125,9 @@ export const StickyObjectNode: React.FC<Props> = ({
         <Text
           x={14}
           y={14}
-          width={object.width - 28}
-          height={object.height - 40}
-          text={object.text || 'Sticky note...'}
+          width={(object?.width || 180) - 28}
+          height={(object?.height || 180) - 40}
+          text={object?.text || 'Sticky note...'}
           fontSize={15}
           fontFamily="Inter"
           fill="#1e293b"

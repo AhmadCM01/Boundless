@@ -23,10 +23,19 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
 
   // Export Full Canvas PNG
   const exportPNG = () => {
-    const stage = stageRef.current;
-    if (!stage) return;
+    const stage = stageRef?.current;
+    if (!stage) {
+      console.warn('ExportMenu: Stage instance unavailable.');
+      setIsOpen(false);
+      return;
+    }
     try {
-      const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+      let dataUrl = '';
+      try {
+        dataUrl = stage.toDataURL({ pixelRatio: 2 });
+      } catch (e) {
+        dataUrl = stage.toDataURL({ pixelRatio: 1 });
+      }
       triggerDownload(dataUrl, `boundless_canvas_${roomId}_${Date.now()}.png`);
     } catch (err) {
       console.error('PNG Export failed:', err);
@@ -36,8 +45,12 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
 
   // Export Selected Object / Frame PNG
   const exportSelectedPNG = () => {
-    const stage = stageRef.current;
-    if (!stage) return;
+    const stage = stageRef?.current;
+    if (!stage) {
+      console.warn('ExportMenu: Stage instance unavailable.');
+      setIsOpen(false);
+      return;
+    }
     try {
       // Find selected transformer node or active selected shape
       const selectedNodes = stage.find('Transformer');
@@ -49,19 +62,28 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
         if (nodes.length > 0) {
           const rect = nodes[0].getClientRect();
           cropBounds = {
-            x: rect.x - 20,
-            y: rect.y - 20,
+            x: Math.max(0, rect.x - 20),
+            y: Math.max(0, rect.y - 20),
             width: rect.width + 40,
             height: rect.height + 40,
           };
         }
       }
 
-      const dataUrl = stage.toDataURL(
-        cropBounds
-          ? { ...cropBounds, pixelRatio: 2 }
-          : { pixelRatio: 2 }
-      );
+      let dataUrl = '';
+      try {
+        dataUrl = stage.toDataURL(
+          cropBounds
+            ? { ...cropBounds, pixelRatio: 2 }
+            : { pixelRatio: 2 }
+        );
+      } catch (e) {
+        dataUrl = stage.toDataURL(
+          cropBounds
+            ? { ...cropBounds, pixelRatio: 1 }
+            : { pixelRatio: 1 }
+        );
+      }
       triggerDownload(dataUrl, `boundless_selection_${roomId}_${Date.now()}.png`);
     } catch (err) {
       console.error('Selection PNG Export failed:', err);

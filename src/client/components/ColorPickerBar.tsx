@@ -85,13 +85,16 @@ export const ColorPickerBar: React.FC<Props> = ({
   };
 
   // Calculate object's screen position so toolbar floats directly 14px above bounding box
-  const safeZoom = zoom || 1;
-  const safeStageX = stageX || 0;
-  const safeStageY = stageY || 0;
+  const safeZoom = typeof zoom === 'number' && !isNaN(zoom) ? zoom : 1;
+  const safeStageX = typeof stageX === 'number' && !isNaN(stageX) ? stageX : 0;
+  const safeStageY = typeof stageY === 'number' && !isNaN(stageY) ? stageY : 0;
 
-  const objW = activeObj.width || 120;
-  const centerWorldX = activeObj.x + objW / 2;
-  const topWorldY = activeObj.y;
+  const objW = (activeObj && typeof activeObj.width === 'number') ? activeObj.width : 120;
+  const objX = (activeObj && typeof activeObj.x === 'number') ? activeObj.x : 0;
+  const objY = (activeObj && typeof activeObj.y === 'number') ? activeObj.y : 0;
+
+  const centerWorldX = objX + objW / 2;
+  const topWorldY = objY;
 
   const rawScreenX = centerWorldX * safeZoom + safeStageX;
   const rawScreenY = topWorldY * safeZoom + safeStageY - 14;
