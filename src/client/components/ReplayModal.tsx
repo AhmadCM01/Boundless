@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Y from 'yjs';
 import { useRoom } from '../context/RoomContext';
-import { Play, Pause, RotateCcw, FastForward, X, History } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, History } from 'lucide-react';
 import { CanvasObject } from '../../shared/types';
 
 interface Props {
@@ -13,8 +13,19 @@ interface DeltaRecord {
   deltaBase64: string;
 }
 
+// Convert base64 string safely to Uint8Array without Latin1 corruption
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export const ReplayModal: React.FC<Props> = ({ onClose }) => {
-  const { roomId } = useRoom();
+  const { roomId, canvasObjects } = useRoom();
   const [updates, setUpdates] = useState<DeltaRecord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -22,18 +33,26 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
   const [replayObjects, setReplayObjects] = useState<CanvasObject[]>([]);
   const timerRef = useRef<any>(null);
 
-  // Fetch binary Y.Doc update deltas from server
+  // Fetch binary Y.Doc update deltas from Fastify server history endpoint
   useEffect(() => {
     fetch(`/api/rooms/${roomId}/history`)
       .then((res) => res.json())
       .then((data) => {
         if (data.updates && data.updates.length > 0) {
+          console.log(`📜 Loaded ${data.updates.length} history deltas for room: ${roomId}`);
           setUpdates(data.updates);
           setCurrentIndex(data.updates.length - 1);
+        } else {
+          console.warn('No server history deltas recorded yet. Fallback to current live objects.');
+          const currentList = Array.from(canvasObjects.values());
+          setReplayObjects(currentList);
         }
       })
-      .catch((err) => console.error('Failed to load session history:', err));
-  }, [roomId]);
+      .catch((err) => {
+        console.error('Failed to load session history:', err);
+        setReplayObjects(Array.from(canvasObjects.values()));
+      });
+  }, [roomId, canvasObjects]);
 
   // Apply Y.Doc binary deltas sequentially up to currentIndex
   useEffect(() => {
@@ -44,14 +63,10 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
 
     for (let i = 0; i <= currentIndex && i < updates.length; i++) {
       try {
-        const binaryString = atob(updates[i].deltaBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let j = 0; j < binaryString.length; j++) {
-          bytes[j] = binaryString.charCodeAt(j);
-        }
+        const bytes = base64ToUint8Array(updates[i].deltaBase64);
         Y.applyUpdate(scratchDoc, bytes);
       } catch (e) {
-        console.error('Failed to apply update delta:', e);
+        console.error('Failed to apply update delta index:', i, e);
       }
     }
 
@@ -73,7 +88,7 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
           }
           return prev + 1;
         });
-      }, 500 / speed);
+      }, 400 / speed);
     } else {
       clearInterval(timerRef.current);
     }
@@ -104,7 +119,7 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
         className="glass-panel"
         style={{
           width: '100%',
-          maxWidth: 600,
+          maxWidth: 640,
           padding: '12px 24px',
           display: 'flex',
           alignItems: 'center',
@@ -113,19 +128,21 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <History size={20} color="var(--accent-primary)" />
-          <h3 style={{ fontSize: 16, color: 'var(--text-heading)' }}>Session Time Travel Replay</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>
+            Session Time Travel Replay ({replayObjects.length} objects)
+          </h3>
         </div>
         <button onClick={onClose} className="tool-btn" style={{ width: 32, height: 32 }}>
           <X size={18} />
         </button>
       </div>
 
-      {/* Render Scratch Canvas State */}
+      {/* Render Scratch Canvas State Viewport */}
       <div
         style={{
           width: '100%',
-          maxWidth: 800,
-          height: 380,
+          maxWidth: 820,
+          height: 400,
           borderRadius: 20,
           background: 'var(--bg-dark)',
           border: '1px solid var(--bg-panel-border)',
@@ -138,44 +155,57 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
       >
         {replayObjects.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-            {updates.length === 0 ? 'No session history recorded yet. Make edits on canvas!' : 'Scrubbing history...'}
+            {updates.length === 0 ? 'No edits recorded in this session yet.' : 'Scrubbing history...'}
           </div>
         ) : (
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {replayObjects.map((obj) => (
-              <div
-                key={obj.id}
-                style={{
-                  position: 'absolute',
-                  left: Math.max(20, Math.min(700, obj.x + 300)),
-                  top: Math.max(20, Math.min(300, obj.y + 150)),
-                  width: obj.width || 80,
-                  height: obj.height || 80,
-                  borderRadius: obj.type === 'shape' && (obj as any).shapeType === 'circle' ? '50%' : 8,
-                  backgroundColor: (obj as any).fill || (obj as any).color || '#6366f1',
-                  color: '#fff',
-                  fontSize: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 4,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {obj.type === 'sticky' ? (obj as any).text : obj.type === 'text' ? (obj as any).text : obj.type}
-              </div>
-            ))}
+            {replayObjects.map((obj) => {
+              const posX = Math.max(30, Math.min(720, (obj.x || 0) * 0.45 + 360));
+              const posY = Math.max(30, Math.min(320, (obj.y || 0) * 0.45 + 180));
+              const width = Math.max(40, (obj.width || 80) * 0.45);
+              const height = Math.max(40, (obj.height || 80) * 0.45);
+              const color = (obj as any).fill || (obj as any).color || '#6366f1';
+
+              return (
+                <div
+                  key={obj.id}
+                  style={{
+                    position: 'absolute',
+                    left: posX,
+                    top: posY,
+                    width,
+                    height,
+                    borderRadius: obj.type === 'shape' && (obj as any).shapeType === 'circle' ? '50%' : 8,
+                    backgroundColor: color,
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 4,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                    transition: 'all 0.15s ease',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {obj.type === 'sticky' ? (obj as any).text : obj.type === 'text' ? (obj as any).text : obj.type}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Scrubber Controls */}
+      {/* Scrubber Controls Bar */}
       <div
         className="glass-panel"
         style={{
           width: '100%',
-          maxWidth: 600,
+          maxWidth: 640,
           padding: '16px 24px',
           display: 'flex',
           flexDirection: 'column',
@@ -184,7 +214,7 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
       >
         {/* Scrubber Slider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 60 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 70, fontWeight: 600 }}>
             {currentIndex + 1} / {updates.length || 1}
           </span>
           <input
@@ -202,7 +232,7 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               onClick={() => {
                 setIsPlaying(false);
@@ -216,10 +246,10 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               className="btn-primary"
-              style={{ padding: '8px 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '8px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
             >
               {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-              <span>{isPlaying ? 'Pause' : 'Play'}</span>
+              <span>{isPlaying ? 'Pause' : 'Play Replay'}</span>
             </button>
           </div>
 
@@ -229,7 +259,7 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
                 key={spd}
                 onClick={() => setSpeed(spd as any)}
                 className={`tool-btn ${speed === spd ? 'active' : ''}`}
-                style={{ width: 36, height: 32, fontSize: 12, fontWeight: 600 }}
+                style={{ width: 38, height: 32, fontSize: 12, fontWeight: 600 }}
               >
                 {spd}x
               </button>

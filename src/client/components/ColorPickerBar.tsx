@@ -1,10 +1,11 @@
 import React from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, ArrowUp, ArrowDown, Edit3 } from 'lucide-react';
 
 interface Props {
   selectedId: string | null;
   onDeselect: () => void;
+  onOpenEditText?: () => void;
 }
 
 const COLOR_SWATCHES = [
@@ -39,6 +40,8 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
   const currentColor =
     (activeObj as any).fill || (activeObj as any).color || '#6366f1';
 
+  const isTextOrSticky = activeObj.type === 'text' || activeObj.type === 'sticky';
+
   const handleSelectColor = (colorValue: string) => {
     if (activeObj.type === 'shape') {
       updateObject(selectedId, { fill: colorValue, stroke: colorValue });
@@ -47,6 +50,12 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
     } else if (activeObj.type === 'text') {
       updateObject(selectedId, { fill: colorValue });
     }
+  };
+
+  const handleTriggerEdit = () => {
+    // Broadcast trigger event to active node
+    const event = new CustomEvent('boundless-trigger-text-edit', { detail: { id: selectedId } });
+    window.dispatchEvent(event);
   };
 
   const handleBringToFront = () => {
@@ -83,6 +92,29 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
         zIndex: 100,
       }}
     >
+      {/* Edit Text Button for Text and Sticky Objects */}
+      {isTextOrSticky && (
+        <>
+          <button
+            onClick={handleTriggerEdit}
+            className="btn-primary"
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            <Edit3 size={15} />
+            <span>Edit Text</span>
+          </button>
+          <div style={{ width: 1, height: 20, background: 'var(--bg-panel-border)', margin: '0 2px', flexShrink: 0 }} />
+        </>
+      )}
+
       <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
         Color
       </span>
@@ -185,6 +217,7 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
           borderRadius: 8,
           whiteSpace: 'nowrap',
           flexShrink: 0,
+          cursor: 'pointer',
         }}
       >
         <Trash2 size={16} />

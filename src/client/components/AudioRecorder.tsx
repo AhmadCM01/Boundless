@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, Square, Play, Pause, Save, Trash2, X } from 'lucide-react';
 import { useRoom } from '../context/RoomContext';
 import { AudioObject } from '../../shared/types';
-import { Mic, Square, Check, X } from 'lucide-react';
 
 interface Props {
   stageX: number;
@@ -10,43 +10,63 @@ interface Props {
   onClose: () => void;
 }
 
-export const AudioRecorder: React.FC<Props> = ({ stageX, stageY, zoom, onClose }) => {
-  const { addObject, canvasObjects, username } = useRoom();
+export const AudioRecorder: React.FC<Props> = ({
+  stageX,
+  stageY,
+  zoom,
+  onClose,
+}) => {
+  const { addObject, username, canvasObjects } = useRoom();
   const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Recording Timer Counter
+  useEffect(() => {
+    if (isRecording) {
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [isRecording]);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-      mediaRecorderRef.current.ondataavailable = (e) => {
+      mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
+          audioChunksRef.current.push(e.data);
         }
       };
 
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
         setAudioBlob(blob);
+        setAudioUrl(url);
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      mediaRecorderRef.current.start();
+      mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-
-      timerRef.current = setInterval(() => {
-        setRecordingTime((t) => t + 1);
-      }, 1000);
     } catch (err) {
-      console.error('Microphone access denied:', err);
+      console.error('Failed to access microphone:', err);
+      alert('Could not access microphone. Please allow microphone permissions.');
     }
   };
 
@@ -54,7 +74,17 @@ export const AudioRecorder: React.FC<Props> = ({ stageX, stageY, zoom, onClose }
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      clearInterval(timerRef.current);
+    }
+  };
+
+  const togglePlayback = () => {
+    if (audioRef.current && audioUrl) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
     }
   };
 
@@ -65,123 +95,170 @@ export const AudioRecorder: React.FC<Props> = ({ stageX, stageY, zoom, onClose }
     const formData = new FormData();
     formData.append('file', file);
 
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const posX = (screenWidth / 2 - stageX) / zoom - 120;
+    const posY = (screenHeight / 2 - stageY) / zoom - 50;
+
+    let finalUrl = audioUrl || '';
+    let finalAssetId = `asset_${Date.now()}`;
+
     try {
       const res = await fetch('/api/assets', {
         method: 'POST',
         body: formData,
       });
       const data = await res.json();
-
       if (data.url) {
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
-        const posX = (screenWidth / 2 - stageX) / zoom - 120;
-        const posY = (screenHeight / 2 - stageY) / zoom - 50;
-
-        const newAudio: AudioObject = {
-          id: `audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          type: 'audio',
-          assetId: data.assetId,
-          audioUrl: data.url,
-          duration: recordingTime || 3,
-          title: `Voice Note (${username || 'Guest'})`,
-          x: posX,
-          y: posY,
-          width: 250,
-          height: 110,
-          rotation: 0,
-          zIndex: canvasObjects.size + 1,
-          createdBy: username || 'Guest',
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-
-        addObject(newAudio);
-        onClose();
+        finalUrl = data.url;
+        finalAssetId = data.assetId;
       }
     } catch (err) {
-      console.error('Failed to upload audio asset:', err);
+      console.warn('Backend asset upload fallback to local Blob URL:', err);
     }
+
+    const newAudio: AudioObject = {
+      id: `audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      type: 'audio',
+      assetId: finalAssetId,
+      src: finalUrl,
+      audioUrl: finalUrl,
+      duration: recordingTime || 3,
+      title: `Voice Note (${username || 'Guest'})`,
+      x: posX,
+      y: posY,
+      width: 250,
+      height: 110,
+      rotation: 0,
+      zIndex: canvasObjects.size + 1,
+      createdBy: username || 'Guest',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    console.log('🎙️ Creating Audio Object in Yjs:', newAudio);
+    addObject(newAudio);
+    onClose();
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'var(--modal-backdrop)',
-      backdropFilter: 'blur(10px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 2000,
-    }}>
-      <div className="glass-panel animate-fade-in" style={{ width: 340, padding: 24, textAlign: 'center', borderRadius: 20 }}>
-        <h3 style={{ fontSize: 18, marginBottom: 12, color: 'var(--text-heading)' }}>Record Voice Note</h3>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'var(--modal-backdrop)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 3000,
+      }}
+    >
+      <div
+        className="glass-panel animate-fade-in"
+        style={{
+          width: 360,
+          padding: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 20,
+        }}
+      >
+        <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Voice Recorder</h3>
+          <button onClick={onClose} className="tool-btn" style={{ width: 32, height: 32 }}>
+            <X size={18} />
+          </button>
+        </div>
 
-        <div style={{ margin: '20px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+        {/* Recording Visualizer Status */}
+        <div
+          style={{
+            width: 100,
+            height: 100,
+            borderRadius: '50%',
+            backgroundColor: isRecording ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-input)',
+            border: isRecording ? '2px solid #ef4444' : '1px solid var(--input-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+          }}
+        >
+          <Mic size={36} color={isRecording ? '#ef4444' : 'var(--text-muted)'} />
+        </div>
+
+        {/* Timer Output */}
+        <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-heading)' }}>
+          00:{recordingTime < 10 ? `0${recordingTime}` : recordingTime}
+        </div>
+
+        {/* Audio Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!isRecording && !audioBlob && (
-            <button
-              onClick={startRecording}
-              className="btn-primary"
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#ef4444',
-                boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)',
-              }}
-            >
-              <Mic size={28} color="#fff" />
+            <button onClick={startRecording} className="btn-primary" style={{ padding: '10px 20px', gap: 8 }}>
+              <Mic size={18} />
+              <span>Record Voice</span>
             </button>
           )}
 
           {isRecording && (
             <button
               onClick={stopRecording}
-              className="btn-primary"
               style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
+                backgroundColor: '#ef4444',
+                color: '#fff',
+                padding: '10px 20px',
+                borderRadius: 10,
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                background: '#dc2626',
-                animation: 'pulse 1.5s infinite',
+                gap: 8,
+                fontWeight: 600,
+                cursor: 'pointer',
               }}
             >
-              <Square size={24} color="#fff" />
+              <Square size={18} />
+              <span>Stop Recording</span>
             </button>
+          )}
+
+          {!isRecording && audioBlob && (
+            <>
+              <button onClick={togglePlayback} className="tool-btn" style={{ width: 44, height: 44 }}>
+                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+              </button>
+              <button
+                onClick={() => {
+                  setAudioBlob(null);
+                  setAudioUrl(null);
+                  setRecordingTime(0);
+                }}
+                className="tool-btn"
+                title="Discard Recording"
+                style={{ width: 44, height: 44, color: '#ef4444' }}
+              >
+                <Trash2 size={20} />
+              </button>
+              <button onClick={handleSaveAudio} className="btn-primary" style={{ padding: '10px 20px', gap: 8 }}>
+                <Save size={18} />
+                <span>Add to Canvas</span>
+              </button>
+            </>
           )}
         </div>
 
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>
-          {isRecording ? `Recording: ${recordingTime}s` : audioBlob ? `Recorded ${recordingTime}s clip` : 'Click microphone to start'}
-        </div>
-
-        {audioBlob && (
-          <div style={{ marginBottom: 20 }}>
-            <audio src={URL.createObjectURL(audioBlob)} controls style={{ width: '100%' }} />
-          </div>
+        {audioUrl && (
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            onEnded={() => setIsPlaying(false)}
+            style={{ display: 'none' }}
+          />
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-          <button onClick={onClose} style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-muted)' }}>
-            Cancel
-          </button>
-          {audioBlob && (
-            <button onClick={handleSaveAudio} className="btn-primary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Check size={16} />
-              <span>Add to Canvas</span>
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );

@@ -26,6 +26,17 @@ export const StickyObjectNode: React.FC<Props> = ({
     setTextValue(object.text);
   }, [object.text]);
 
+  // Listen for custom trigger edit event from property bar or keyboard
+  useEffect(() => {
+    const handleCustomTrigger = (e: any) => {
+      if (e.detail && e.detail.id === object.id) {
+        setIsEditing(true);
+      }
+    };
+    window.addEventListener('boundless-trigger-text-edit', handleCustomTrigger);
+    return () => window.removeEventListener('boundless-trigger-text-edit', handleCustomTrigger);
+  }, [object.id]);
+
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
       trRef.current.nodes([groupRef.current]);
@@ -33,9 +44,8 @@ export const StickyObjectNode: React.FC<Props> = ({
     }
   }, [isSelected]);
 
-  const handleTriggerEdit = (e: Konva.KonvaEventObject<any>) => {
-    e.cancelBubble = true;
-    console.log('✏️ Double click detected on Sticky Note object:', object.id);
+  const handleTriggerEdit = () => {
+    console.log('✏️ Triggering edit on Sticky Note object:', object.id);
     setIsEditing(true);
   };
 
@@ -55,21 +65,29 @@ export const StickyObjectNode: React.FC<Props> = ({
         rotation={object.rotation}
         draggable={!isEditing}
         onClick={(e) => {
-          if (e.evt.detail === 2) {
-            handleTriggerEdit(e);
+          e.cancelBubble = true;
+          if (isSelected) {
+            handleTriggerEdit();
           } else {
             onSelect();
           }
         }}
         onTap={(e) => {
-          if (e.evt.detail === 2) {
-            handleTriggerEdit(e);
+          e.cancelBubble = true;
+          if (isSelected) {
+            handleTriggerEdit();
           } else {
             onSelect();
           }
         }}
-        onDblClick={handleTriggerEdit}
-        onDblTap={handleTriggerEdit}
+        onDblClick={(e) => {
+          e.cancelBubble = true;
+          handleTriggerEdit();
+        }}
+        onDblTap={(e) => {
+          e.cancelBubble = true;
+          handleTriggerEdit();
+        }}
         onDragEnd={(e) => {
           onChange({
             x: e.target.x(),
@@ -118,6 +136,14 @@ export const StickyObjectNode: React.FC<Props> = ({
       {isSelected && !isEditing && (
         <Transformer
           ref={trRef}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            handleTriggerEdit();
+          }}
+          onDblClick={(e) => {
+            e.cancelBubble = true;
+            handleTriggerEdit();
+          }}
           boundBoxFunc={(oldBox, newBox) => {
             if (newBox.width < 100 || newBox.height < 100) return oldBox;
             return newBox;
@@ -125,15 +151,15 @@ export const StickyObjectNode: React.FC<Props> = ({
         />
       )}
 
-      {/* HTML Sticky Note Editing Dialog Portal directly attached to document.body */}
+      {/* HTML Sticky Note Editing Modal Portal */}
       {isEditing && ReactDOM.createPortal(
         <div
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
-            right: 0,
-            bottom: 0,
+            width: '100vw',
+            height: '100vh',
             backgroundColor: 'rgba(0, 0, 0, 0.65)',
             backdropFilter: 'blur(6px)',
             display: 'flex',
