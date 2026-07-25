@@ -25,7 +25,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
   const exportPNG = () => {
     const stage = stageRef?.current;
     if (!stage) {
-      console.warn('ExportMenu: Stage instance unavailable.');
+      console.error('Export failed: stageRef is null — ref not attached to Konva Stage');
       setIsOpen(false);
       return;
     }
@@ -47,7 +47,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
   const exportSelectedPNG = () => {
     const stage = stageRef?.current;
     if (!stage) {
-      console.warn('ExportMenu: Stage instance unavailable.');
+      console.error('Export failed: stageRef is null — ref not attached to Konva Stage');
       setIsOpen(false);
       return;
     }

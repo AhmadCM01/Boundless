@@ -149,3 +149,24 @@ button {
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ── Responsive Mobile Layout ─────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Scale down toolbar buttons so they fit on small screens */
+  .tool-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  /* Allow glass-panel toolbars to wrap rather than overflow */
+  .glass-panel {
+    flex-wrap: wrap;
+    overflow: visible !important;
+  }
+
+  /* Ensure flyout popovers are never clipped */
+  .glass-panel > * {
+    overflow: visible;
+  }
+}

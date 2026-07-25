@@ -89,13 +89,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         top: 12,
         left: 12,
         right: 12,
-        height: 56,
+        minHeight: 56,
+        height: 'auto',
         padding: '0 12px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap' as const,
+        gap: 6,
         maxWidth: 'calc(100vw - 24px)',
-        overflowX: 'auto',
+        overflow: 'visible',
         zIndex: 100,
       }}
     >

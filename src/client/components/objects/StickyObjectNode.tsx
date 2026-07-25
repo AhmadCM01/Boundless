@@ -18,14 +18,14 @@ export const StickyObjectNode: React.FC<Props> = ({
   onChange,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [textValue, setTextValue] = useState(object.text);
+  const [textValue, setTextValue] = useState<string>(typeof object.text === 'string' ? object.text : '');
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mountTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    setTextValue(object.text);
+    setTextValue(typeof object.text === 'string' ? object.text : '');
   }, [object.text]);
 
   // Listen for custom trigger edit event from property bar or keyboard shortcut
@@ -67,8 +67,10 @@ export const StickyObjectNode: React.FC<Props> = ({
 
   const handleSave = () => {
     setIsEditing(false);
-    if (textValue.trim() !== object.text) {
-      onChange({ text: textValue.trim() || 'Sticky note...' });
+    const safeValue = typeof textValue === 'string' ? textValue.trim() : '';
+    const safeExisting = typeof object.text === 'string' ? object.text : '';
+    if (safeValue !== safeExisting) {
+      onChange({ text: safeValue || 'Sticky note...' });
     }
   };
 
@@ -192,7 +194,7 @@ export const StickyObjectNode: React.FC<Props> = ({
             <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Edit Sticky Note</h4>
             <textarea
               ref={textareaRef}
-              value={textValue}
+              value={typeof textValue === 'string' ? textValue : ''}
               onChange={(e) => {
                 e.stopPropagation();
                 setTextValue(e.target.value);
