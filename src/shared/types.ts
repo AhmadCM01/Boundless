@@ -1,4 +1,4 @@
-export type ObjectType = 'text' | 'shape' | 'sticky' | 'image' | 'audio';
+export type ObjectType = 'text' | 'shape' | 'sticky' | 'image' | 'audio' | 'pen';
 
 export interface BaseCanvasObject {
   id: string;
@@ -52,7 +52,14 @@ export interface AudioObject extends BaseCanvasObject {
   title: string;
 }
 
-export type CanvasObject = TextObject | ShapeObject | StickyObject | ImageObject | AudioObject;
+export interface PenObject extends BaseCanvasObject {
+  type: 'pen';
+  points: number[];
+  stroke: string;
+  strokeWidth: number;
+}
+
+export type CanvasObject = TextObject | ShapeObject | StickyObject | ImageObject | AudioObject | PenObject;
 
 export interface CursorPosition {
   x: number;

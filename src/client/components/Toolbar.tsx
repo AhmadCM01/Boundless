@@ -4,6 +4,7 @@ import { ShapeObject, StickyObject, TextObject, ImageObject } from '../../shared
 import {
   MousePointer,
   Hand,
+  Pencil,
   Type,
   Square,
   Circle as CircleIcon,
@@ -18,7 +19,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 
-export type ToolMode = 'select' | 'pan' | 'text' | 'shape' | 'sticky' | 'image' | 'audio';
+export type ToolMode = 'select' | 'pan' | 'pen' | 'text' | 'shape' | 'sticky' | 'image' | 'audio';
 
 interface ToolbarProps {
   activeTool: ToolMode;
@@ -44,11 +45,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   // Get world coordinate center of screen for creating new objects
   const getCenterCanvasPos = () => {
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
     return {
-      x: (screenWidth / 2 - stageX) / zoom - 75,
-      y: (screenHeight / 2 - stageY) / zoom - 50,
+      x: (screenWidth / 2 - (stageX || 0)) / (zoom || 1) - 75,
+      y: (screenHeight / 2 - (stageY || 0)) / (zoom || 1) - 50,
     };
   };
 
@@ -213,6 +214,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         display: 'flex',
         alignItems: 'center',
         gap: 6,
+        maxWidth: 'calc(100vw - 24px)',
+        overflowX: 'auto',
         zIndex: 100,
       }}
     >
@@ -234,7 +237,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <Hand size={18} />
       </button>
 
-      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px' }} />
+      {/* Freehand Pen / Sketch Tool */}
+      <button
+        title="Freehand Pen Tool (P)"
+        className={`tool-btn ${activeTool === 'pen' ? 'active' : ''}`}
+        onClick={() => setActiveTool('pen')}
+      >
+        <Pencil size={18} />
+      </button>
+
+      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
 
       {/* Add Text */}
       <button title="Add Text" className="tool-btn" onClick={handleAddText}>
@@ -344,7 +356,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <Mic size={18} />
       </button>
 
-      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px' }} />
+      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
 
       {/* Secondary Overflow Options Menu (...) */}
       <div style={{ position: 'relative' }}>
@@ -380,7 +392,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               style={{
                 width: '100%',
                 height: 36,
-                justify: 'flex-start',
+                justifyContent: 'flex-start',
                 padding: '0 12px',
                 gap: 10,
                 fontSize: 13,

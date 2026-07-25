@@ -86,14 +86,16 @@ export const Navbar: React.FC<NavbarProps> = ({
       className="glass-panel"
       style={{
         position: 'absolute',
-        top: 16,
-        left: 24,
-        right: 24,
-        height: 64,
-        padding: '0 20px',
+        top: 12,
+        left: 12,
+        right: 12,
+        height: 56,
+        padding: '0 12px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        maxWidth: 'calc(100vw - 24px)',
+        overflowX: 'auto',
         zIndex: 100,
       }}
     >

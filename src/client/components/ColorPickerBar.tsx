@@ -5,9 +5,9 @@ import { Trash2, ArrowUp, ArrowDown, Edit3 } from 'lucide-react';
 interface Props {
   selectedId: string | null;
   onDeselect: () => void;
-  stageX: number;
-  stageY: number;
-  zoom: number;
+  stageX?: number;
+  stageY?: number;
+  zoom?: number;
 }
 
 const COLOR_SWATCHES = [
@@ -34,9 +34,9 @@ const COLOR_SWATCHES = [
 export const ColorPickerBar: React.FC<Props> = ({
   selectedId,
   onDeselect,
-  stageX,
-  stageY,
-  zoom,
+  stageX = 0,
+  stageY = 0,
+  zoom = 1,
 }) => {
   const { canvasObjects, updateObject, deleteObject } = useRoom();
 
@@ -46,7 +46,7 @@ export const ColorPickerBar: React.FC<Props> = ({
   if (!activeObj) return null;
 
   const currentColor =
-    (activeObj as any).fill || (activeObj as any).color || '#6366f1';
+    (activeObj as any).fill || (activeObj as any).color || (activeObj as any).stroke || '#6366f1';
 
   const isTextOrSticky = activeObj.type === 'text' || activeObj.type === 'sticky';
 
@@ -57,6 +57,8 @@ export const ColorPickerBar: React.FC<Props> = ({
       updateObject(selectedId, { color: colorValue });
     } else if (activeObj.type === 'text') {
       updateObject(selectedId, { fill: colorValue });
+    } else if (activeObj.type === 'pen') {
+      updateObject(selectedId, { stroke: colorValue });
     }
   };
 
@@ -83,16 +85,20 @@ export const ColorPickerBar: React.FC<Props> = ({
   };
 
   // Calculate object's screen position so toolbar floats directly 14px above bounding box
+  const safeZoom = zoom || 1;
+  const safeStageX = stageX || 0;
+  const safeStageY = stageY || 0;
+
   const objW = activeObj.width || 120;
   const centerWorldX = activeObj.x + objW / 2;
   const topWorldY = activeObj.y;
 
-  const rawScreenX = centerWorldX * zoom + stageX;
-  const rawScreenY = topWorldY * zoom + stageY - 14;
+  const rawScreenX = centerWorldX * safeZoom + safeStageX;
+  const rawScreenY = topWorldY * safeZoom + safeStageY - 14;
 
   // Clamped position to keep toolbar visible within screen boundaries
-  const screenX = Math.max(160, Math.min(window.innerWidth - 160, rawScreenX));
-  const screenY = Math.max(85, Math.min(window.innerHeight - 60, rawScreenY));
+  const screenX = Math.max(160, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 160, rawScreenX));
+  const screenY = Math.max(85, Math.min((typeof window !== 'undefined' ? window.innerHeight : 800) - 60, rawScreenY));
 
   return (
     <div

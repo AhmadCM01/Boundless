@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Group, Circle, Text as KonvaText } from 'react-konva';
+import { Stage, Layer, Group, Circle, Text as KonvaText, Line } from 'react-konva';
 import { useRoom } from '../context/RoomContext';
 import { useViewportCulling } from '../hooks/useViewportCulling';
 import { ToolMode } from './Toolbar';
@@ -8,7 +8,8 @@ import { ShapeObjectNode } from './objects/ShapeObjectNode';
 import { StickyObjectNode } from './objects/StickyObjectNode';
 import { ImageObjectNode } from './objects/ImageObjectNode';
 import { AudioObjectNode } from './objects/AudioObjectNode';
-import { CanvasObject, TextObject, ShapeObject, StickyObject, ImageObject, AudioObject } from '../../shared/types';
+import { PenObjectNode } from './objects/PenObjectNode';
+import { CanvasObject, TextObject, ShapeObject, StickyObject, ImageObject, AudioObject, PenObject } from '../../shared/types';
 import { physicsEngine } from '../physics/PhysicsEngine';
 import { CanvasObjectErrorBoundary } from './CanvasObjectErrorBoundary';
 import Konva from 'konva';
@@ -36,9 +37,9 @@ const BackgroundGrid: React.FC<{
   stageY: number;
   zoom: number;
 }> = ({ width, height, stageX, stageY, zoom }) => {
-  const gridSize = 40 * zoom;
-  const startX = (stageX % gridSize) - gridSize;
-  const startY = (stageY % gridSize) - gridSize;
+  const gridSize = 40 * (zoom || 1);
+  const startX = ((stageX || 0) % gridSize) - gridSize;
+  const startY = ((stageY || 0) % gridSize) - gridSize;
 
   const dots = [];
   for (let x = startX; x < width + gridSize; x += gridSize) {
@@ -49,7 +50,7 @@ const BackgroundGrid: React.FC<{
           x={x}
           y={y}
           radius={1.5}
-          fill="#3f3f46"
+          fill="rgba(99, 102, 241, 0.2)"
           listening={false}
         />
       );
@@ -73,11 +74,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   stageRef,
   followingUserId,
 }) => {
-  const { canvasObjects, updateObject, updateCursor, updateViewport, onlineUsers } = useRoom();
+  const { canvasObjects, updateObject, updateCursor, updateViewport, onlineUsers, addObject, username } = useRoom();
   const [isPanning, setIsPanning] = useState(false);
+  const [isDrawingPen, setIsDrawingPen] = useState(false);
+  const [currentPenPoints, setCurrentPenPoints] = useState<number[]>([]);
+
   const [windowDimensions, setWindowDimensions] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
   });
 
   // Physics loop animation frame
@@ -104,7 +108,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [followingUserId, onlineUsers, setStageX, setStageY, setZoom]);
 
-  // Window Resize Listener
+  // Window Resize & Mobile Orientation Listener
   useEffect(() => {
     const handleResize = () => {
       setWindowDimensions({
@@ -113,7 +117,11 @@ export const Canvas: React.FC<CanvasProps> = ({
       });
     };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, []);
 
   // Broadcast Viewport Bounds for Awareness
@@ -143,7 +151,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     const stage = stageRef.current;
     if (!stage) return;
 
-    const oldZoom = zoom;
+    const oldZoom = zoom || 1;
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
@@ -163,22 +171,77 @@ export const Canvas: React.FC<CanvasProps> = ({
     setStageY(newStageY);
   };
 
-  // Pointer Move — Broadcast Cursor
+  // Pointer Down — Pen Drawing Start
+  const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (activeTool === 'pen' && e.target === stageRef.current) {
+      const stage = stageRef.current;
+      if (!stage) return;
+      const pointer = stage.getPointerPosition();
+      if (pointer) {
+        const worldX = (pointer.x - stageX) / (zoom || 1);
+        const worldY = (pointer.y - stageY) / (zoom || 1);
+        setIsDrawingPen(true);
+        setCurrentPenPoints([worldX, worldY]);
+      }
+    }
+  };
+
+  // Pointer Move — Broadcast Cursor & Extend Pen Stroke
   const handlePointerMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const stage = stageRef.current;
     if (!stage) return;
 
     const pointer = stage.getPointerPosition();
     if (pointer) {
-      const worldX = (pointer.x - stageX) / zoom;
-      const worldY = (pointer.y - stageY) / zoom;
+      const worldX = (pointer.x - stageX) / (zoom || 1);
+      const worldY = (pointer.y - stageY) / (zoom || 1);
       updateCursor({ x: worldX, y: worldY });
+
+      if (isDrawingPen && activeTool === 'pen') {
+        setCurrentPenPoints((prev) => [...prev, worldX, worldY]);
+      }
     }
+  };
+
+  // Pointer Up — Finish Pen Drawing Stroke
+  const handlePointerUp = () => {
+    if (isDrawingPen && currentPenPoints.length >= 4) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (let i = 0; i < currentPenPoints.length; i += 2) {
+        minX = Math.min(minX, currentPenPoints[i]);
+        maxX = Math.max(maxX, currentPenPoints[i]);
+        minY = Math.min(minY, currentPenPoints[i + 1]);
+        maxY = Math.max(maxY, currentPenPoints[i + 1]);
+      }
+
+      const relPoints = currentPenPoints.map((val, idx) => idx % 2 === 0 ? val - minX : val - minY);
+
+      const newPenObj: PenObject = {
+        id: `pen_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        type: 'pen',
+        x: minX,
+        y: minY,
+        width: Math.max(20, maxX - minX),
+        height: Math.max(20, maxY - minY),
+        points: relPoints,
+        stroke: '#6366f1',
+        strokeWidth: 3,
+        rotation: 0,
+        zIndex: canvasObjects.size + 1,
+        createdBy: username || 'Guest',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      addObject(newPenObj);
+    }
+    setIsDrawingPen(false);
+    setCurrentPenPoints([]);
   };
 
   // Stage click — deselect
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.target === stageRef.current) {
+    if (e.target === stageRef.current && activeTool !== 'pen') {
       setSelectedId(null);
     }
   };
@@ -195,7 +258,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         scaleY={zoom}
         draggable={activeTool === 'pan' || isPanning}
         onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
         onClick={handleStageClick}
         onDragEnd={(e) => {
           if (e.target === stageRef.current) {
@@ -203,7 +268,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             setStageY(e.target.y());
           }
         }}
-        style={{ cursor: activeTool === 'pan' || isPanning ? 'grab' : 'default' }}
+        style={{ cursor: activeTool === 'pan' || isPanning ? 'grab' : activeTool === 'pen' ? 'crosshair' : 'default' }}
       >
         {/* Layer 1: Infinite Canvas Grid */}
         <Layer key="grid-layer">
@@ -248,10 +313,29 @@ export const Canvas: React.FC<CanvasProps> = ({
                     <AudioObjectNode object={obj as AudioObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} stageX={stageX} stageY={stageY} zoom={zoom} />
                   </CanvasObjectErrorBoundary>
                 );
+              case 'pen':
+                return (
+                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                    <PenObjectNode object={obj as PenObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
+                  </CanvasObjectErrorBoundary>
+                );
               default:
                 return null;
             }
           })}
+
+          {/* Active Freehand Pen Stroke Overlay */}
+          {isDrawingPen && currentPenPoints.length >= 2 && (
+            <Line
+              points={currentPenPoints}
+              stroke="#6366f1"
+              strokeWidth={3}
+              tension={0.5}
+              lineCap="round"
+              lineJoin="round"
+              listening={false}
+            />
+          )}
         </Layer>
 
         {/* Layer 3: Remote Collaborator Cursors & Floating Reactions */}

@@ -38,9 +38,25 @@ export function useViewportCulling(params: ViewportCullingParams): CanvasObject[
 
     targetMap.forEach((obj) => {
       if (!obj) return;
-      // Calculate object bounding box
-      const objWidth = obj.width || 100;
-      const objHeight = obj.height || 100;
+
+      let objWidth = obj.width || 100;
+      let objHeight = obj.height || 100;
+
+      if (obj.type === 'pen' && (obj as any).points && (obj as any).points.length >= 2) {
+        const pts = (obj as any).points as number[];
+        let minPx = Infinity;
+        let maxPx = -Infinity;
+        let minPy = Infinity;
+        let maxPy = -Infinity;
+        for (let i = 0; i < pts.length; i += 2) {
+          if (pts[i] < minPx) minPx = pts[i];
+          if (pts[i] > maxPx) maxPx = pts[i];
+          if (pts[i + 1] < minPy) minPy = pts[i + 1];
+          if (pts[i + 1] > maxPy) maxPy = pts[i + 1];
+        }
+        objWidth = Math.max(20, maxPx - minPx + 20);
+        objHeight = Math.max(20, maxPy - minPy + 20);
+      }
 
       const objMinX = obj.x;
       const objMaxX = obj.x + objWidth;

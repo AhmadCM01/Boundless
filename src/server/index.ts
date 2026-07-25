@@ -7,6 +7,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import * as Y from 'yjs';
 // @ts-ignore y-websocket bin utils TS module setup
 import { setupWSConnection, getYDoc } from 'y-websocket/bin/utils';
 
@@ -139,16 +140,28 @@ wss.on('connection', (conn, req) => {
   // Attach Y.Doc update listener for session replay history tracking
   try {
     const doc = getYDoc(roomName);
-    if (doc && !doc._historySubscribed) {
-      doc._historySubscribed = true;
+    if (doc && !(doc as any)._historySubscribed) {
+      (doc as any)._historySubscribed = true;
       console.log(`📡 Subscribed history update tracking for room: [${roomName}]`);
-      doc.on('update', (update: Uint8Array) => {
-        let history = roomHistoryMap.get(roomName);
-        if (!history) {
-          history = [];
-          roomHistoryMap.set(roomName, history);
-        }
+      
+      let history = roomHistoryMap.get(roomName);
+      if (!history) {
+        history = [];
+        const baseSnapshot = Y.encodeStateAsUpdate(doc);
         history.push({
+          timestamp: Date.now(),
+          deltaBase64: Buffer.from(baseSnapshot).toString('base64'),
+        });
+        roomHistoryMap.set(roomName, history);
+      }
+
+      doc.on('update', (update: Uint8Array) => {
+        let h = roomHistoryMap.get(roomName);
+        if (!h) {
+          h = [];
+          roomHistoryMap.set(roomName, h);
+        }
+        h.push({
           timestamp: Date.now(),
           deltaBase64: Buffer.from(update).toString('base64'),
         });
