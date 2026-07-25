@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
 import { BrandLogo } from './BrandLogo';
 import { ExportMenu } from './ExportMenu';
-import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut, History, Eye } from 'lucide-react';
+import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut, History, Eye, Edit3 } from 'lucide-react';
 import Konva from 'konva';
 
 interface NavbarProps {
@@ -22,6 +22,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [copied, setCopied] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempName, setTempName] = useState(username || '');
+
+  // Room Title Customization State
+  const [roomTitle, setRoomTitle] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('boundless_room_titles');
+      if (saved) {
+        const map = JSON.parse(saved);
+        return map[roomId] || roomId;
+      }
+    } catch (e) {}
+    return roomId;
+  });
+  const [isEditingRoomTitle, setIsEditingRoomTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState(roomTitle);
 
   // Persisted Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -53,6 +67,20 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const handleSaveRoomTitle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (tempTitle.trim()) {
+      setRoomTitle(tempTitle.trim());
+      try {
+        const saved = localStorage.getItem('boundless_room_titles');
+        const map = saved ? JSON.parse(saved) : {};
+        map[roomId] = tempTitle.trim();
+        localStorage.setItem('boundless_room_titles', JSON.stringify(map));
+      } catch (e) {}
+      setIsEditingRoomTitle(false);
+    }
+  };
+
   return (
     <header
       className="glass-panel"
@@ -80,13 +108,32 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)' }} />
 
-        {/* Room Name Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Room:</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'monospace' }}>
-            {roomId}
+        {/* Room Title Badge (Editable) */}
+        <button
+          onClick={() => {
+            setTempTitle(roomTitle);
+            setIsEditingRoomTitle(true);
+          }}
+          className="tool-btn"
+          title="Click to rename room context"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '4px 12px',
+            borderRadius: 10,
+            border: '1px solid var(--bg-panel-border)',
+            background: 'var(--btn-hover-bg)',
+            height: 36,
+            width: 'auto',
+          }}
+        >
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Room:</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'Inter' }}>
+            {roomTitle}
           </span>
-        </div>
+          <Edit3 size={13} color="var(--text-muted)" />
+        </button>
 
         {/* Sync Status Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 10px', borderRadius: 20 }} className="glass-pill">
@@ -104,9 +151,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Online Collaborators, Export, Replay, Theme & Logout */}
+      {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Following User Badge */}
         {followingUserId && (
           <button
             onClick={() => setFollowingUserId(null)}
@@ -120,7 +166,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Online Collaborator Avatars */}
         <div style={{ display: 'flex', alignItems: 'center', marginRight: 6 }}>
-          {/* Current User */}
           <div
             title={`You: ${username || 'Guest'} (Click to edit)`}
             onClick={() => {
@@ -146,7 +191,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             {username ? username.substring(0, 2).toUpperCase() : 'ME'}
           </div>
 
-          {/* Remote Collaborators */}
           {onlineUsers.map((user, idx) => (
             <div
               key={user.userId || idx}
@@ -236,7 +280,63 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
       </div>
 
-      {/* Edit Username Modal Overlay */}
+      {/* Edit Room Title Modal */}
+      {isEditingRoomTitle && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'var(--modal-backdrop)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+        >
+          <form
+            onSubmit={handleSaveRoomTitle}
+            className="glass-panel animate-fade-in"
+            style={{ width: 380, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-heading)' }}>Rename Canvas Room</h3>
+            <input
+              type="text"
+              value={tempTitle}
+              onChange={(e) => setTempTitle(e.target.value)}
+              placeholder="e.g. Q3 Product Strategy..."
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'var(--bg-input)',
+                border: '1px solid var(--input-border)',
+                color: 'var(--text-main)',
+                fontSize: 15,
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setIsEditingRoomTitle(false)}
+                className="tool-btn"
+                style={{ padding: '8px 16px', width: 'auto', height: 'auto', fontSize: 13 }}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+                Save Title
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Username Modal */}
       {isEditingUsername && (
         <div
           style={{

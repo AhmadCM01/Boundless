@@ -21,6 +21,7 @@ export const StickyObjectNode: React.FC<Props> = ({
   const [textValue, setTextValue] = useState(object.text);
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setTextValue(object.text);
@@ -37,6 +38,19 @@ export const StickyObjectNode: React.FC<Props> = ({
     return () => window.removeEventListener('boundless-trigger-text-edit', handleCustomTrigger);
   }, [object.id]);
 
+  // Auto-focus and select textarea text on edit modal mount
+  useEffect(() => {
+    if (isEditing) {
+      const timer = setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.select();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isEditing]);
+
   useEffect(() => {
     if (isSelected && trRef.current && groupRef.current) {
       trRef.current.nodes([groupRef.current]);
@@ -45,7 +59,6 @@ export const StickyObjectNode: React.FC<Props> = ({
   }, [isSelected]);
 
   const handleTriggerEdit = () => {
-    console.log('✏️ Triggering edit on Sticky Note object:', object.id);
     setIsEditing(true);
   };
 
@@ -171,21 +184,28 @@ export const StickyObjectNode: React.FC<Props> = ({
         >
           <div
             className="glass-panel animate-fade-in"
-            style={{ width: 380, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}
+            style={{ width: 400, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}
             onClick={(e) => e.stopPropagation()}
           >
             <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Edit Sticky Note</h4>
             <textarea
+              ref={textareaRef}
               value={textValue}
-              onChange={(e) => setTextValue(e.target.value)}
+              onChange={(e) => {
+                e.stopPropagation();
+                setTextValue(e.target.value);
+              }}
               onKeyDown={(e) => {
+                e.stopPropagation();
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSave();
                 }
               }}
+              onKeyUp={(e) => e.stopPropagation()}
+              onKeyPress={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               rows={5}
-              autoFocus
               style={{
                 width: '100%',
                 padding: '12px 14px',

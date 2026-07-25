@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Download, FileImage, FileCode, FileText } from 'lucide-react';
+import { Download, FileImage, FileCode, FileText, Crop } from 'lucide-react';
 import Konva from 'konva';
 
 interface Props {
   stageRef: React.RefObject<Konva.Stage | null>;
+  selectedId?: string | null;
 }
 
 export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
   const { canvasObjects, roomId } = useRoom();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Helper helper to trigger download reliably across browsers
   const triggerDownload = (url: string, filename: string) => {
     const link = document.createElement('a');
     link.download = filename;
@@ -21,20 +21,55 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
     document.body.removeChild(link);
   };
 
-  // Export 1: High-res PNG Image
+  // Export Full Canvas PNG
   const exportPNG = () => {
     const stage = stageRef.current;
     if (!stage) return;
     try {
       const dataUrl = stage.toDataURL({ pixelRatio: 2 });
-      triggerDownload(dataUrl, `boundless_${roomId}_${Date.now()}.png`);
+      triggerDownload(dataUrl, `boundless_canvas_${roomId}_${Date.now()}.png`);
     } catch (err) {
       console.error('PNG Export failed:', err);
     }
     setIsOpen(false);
   };
 
-  // Export 2: SVG Vector Format
+  // Export Selected Object / Frame PNG
+  const exportSelectedPNG = () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    try {
+      // Find selected transformer node or active selected shape
+      const selectedNodes = stage.find('Transformer');
+      let cropBounds = null;
+
+      if (selectedNodes.length > 0) {
+        const tr = selectedNodes[0] as Konva.Transformer;
+        const nodes = tr.nodes();
+        if (nodes.length > 0) {
+          const rect = nodes[0].getClientRect();
+          cropBounds = {
+            x: rect.x - 20,
+            y: rect.y - 20,
+            width: rect.width + 40,
+            height: rect.height + 40,
+          };
+        }
+      }
+
+      const dataUrl = stage.toDataURL(
+        cropBounds
+          ? { ...cropBounds, pixelRatio: 2 }
+          : { pixelRatio: 2 }
+      );
+      triggerDownload(dataUrl, `boundless_selection_${roomId}_${Date.now()}.png`);
+    } catch (err) {
+      console.error('Selection PNG Export failed:', err);
+    }
+    setIsOpen(false);
+  };
+
+  // Export SVG Vector Format
   const exportSVG = () => {
     const objects = Array.from(canvasObjects.values());
     const minX = Math.min(...objects.map((o) => o.x), 0) - 100;
@@ -62,7 +97,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
         svgContent += `  <rect x="${obj.x}" y="${obj.y}" width="${obj.width}" height="${obj.height}" rx="6" fill="${color}" />\n`;
         svgContent += `  <text x="${obj.x + 14}" y="${obj.y + 30}" font-family="sans-serif" font-size="14" fill="#1e293b">${text}</text>\n`;
       } else if (obj.type === 'text') {
-        const fill = (obj as any).fill || '#f3f4f6';
+        const fill = (obj as any).fill || '#e5e7eb';
         const text = (obj as any).text || '';
         svgContent += `  <text x="${obj.x}" y="${obj.y + 24}" font-family="sans-serif" font-size="${(obj as any).fontSize || 20}" fill="${fill}">${text}</text>\n`;
       }
@@ -77,7 +112,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
     setIsOpen(false);
   };
 
-  // Export 3: JSON Raw Canvas Objects Data
+  // Export JSON Raw Canvas Data
   const exportJSON = () => {
     const objectsArray = Array.from(canvasObjects.values());
     const jsonString = JSON.stringify(
@@ -103,7 +138,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="tool-btn"
-        title="Export Canvas (PNG, SVG, JSON)"
+        title="Export Canvas / Selection (PNG, SVG, JSON)"
         style={{
           width: 40,
           height: 40,
@@ -122,8 +157,8 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
             position: 'absolute',
             top: 50,
             right: 0,
-            width: 170,
-            padding: 6,
+            width: 200,
+            padding: 8,
             display: 'flex',
             flexDirection: 'column',
             gap: 4,
@@ -136,7 +171,15 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
             style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
           >
             <FileImage size={16} />
-            <span>Export PNG</span>
+            <span>Export Full Canvas</span>
+          </button>
+          <button
+            onClick={exportSelectedPNG}
+            className="tool-btn"
+            style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+          >
+            <Crop size={16} color="#3b82f6" />
+            <span>Export Selection Only</span>
           </button>
           <button
             onClick={exportSVG}
@@ -144,7 +187,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
             style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
           >
             <FileCode size={16} />
-            <span>Export SVG</span>
+            <span>Export SVG Vector</span>
           </button>
           <button
             onClick={exportJSON}
@@ -152,7 +195,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
             style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
           >
             <FileText size={16} />
-            <span>Export JSON</span>
+            <span>Export JSON Data</span>
           </button>
         </div>
       )}

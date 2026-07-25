@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Sparkles, User, ArrowRight, History, DoorOpen } from 'lucide-react';
+import { Sparkles, User, ArrowRight, History, DoorOpen, Edit3 } from 'lucide-react';
 
 interface RecentRoom {
   id: string;
@@ -11,16 +11,22 @@ export const GuestModal: React.FC = () => {
   const { username, setUsername, roomId } = useRoom();
   const [inputName, setInputName] = useState('');
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [roomTitles, setRoomTitles] = useState<Record<string, string>>({});
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editTitleInput, setEditTitleInput] = useState('');
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('boundless_recent_rooms');
-      if (saved) {
-        const parsed: RecentRoom[] = JSON.parse(saved);
-        setRecentRooms(parsed);
+      const savedRooms = localStorage.getItem('boundless_recent_rooms');
+      if (savedRooms) {
+        setRecentRooms(JSON.parse(savedRooms));
+      }
+      const savedTitles = localStorage.getItem('boundless_room_titles');
+      if (savedTitles) {
+        setRoomTitles(JSON.parse(savedTitles));
       }
     } catch (e) {
-      console.error('Failed to load recent rooms:', e);
+      console.error('Failed to load dashboard room history:', e);
     }
   }, []);
 
@@ -35,6 +41,15 @@ export const GuestModal: React.FC = () => {
 
   const navigateToRoom = (targetRoomId: string) => {
     window.location.href = `/room/${targetRoomId}`;
+  };
+
+  const handleSaveRoomTitle = (targetId: string) => {
+    if (editTitleInput.trim()) {
+      const updated = { ...roomTitles, [targetId]: editTitleInput.trim() };
+      setRoomTitles(updated);
+      localStorage.setItem('boundless_room_titles', JSON.stringify(updated));
+      setEditingRoomId(null);
+    }
   };
 
   return (
@@ -52,7 +67,7 @@ export const GuestModal: React.FC = () => {
       zIndex: 2000,
     }}>
       <div className="glass-panel animate-fade-in" style={{
-        width: 420,
+        width: 440,
         padding: 32,
         borderRadius: 24,
         textAlign: 'center',
@@ -73,10 +88,10 @@ export const GuestModal: React.FC = () => {
         </div>
 
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, marginBottom: 6, color: 'var(--text-heading)' }}>
-          Join Boundless
+          Join Boundless Workspace
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
-          Collaborate live on room <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{roomId}</strong>
+          Collaborate live on room <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{roomTitles[roomId] || roomId}</strong>
         </p>
 
         <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
@@ -116,46 +131,94 @@ export const GuestModal: React.FC = () => {
               gap: 8
             }}
           >
-            <span>Enter Canvas</span>
+            <span>Enter Canvas Dashboard</span>
             <ArrowRight size={18} />
           </button>
         </form>
 
-        {/* Recently Visited Rooms List */}
+        {/* Dashboard Room History List with Rename Controls */}
         {recentRooms.length > 0 && (
           <div style={{ borderTop: '1px solid var(--bg-panel-border)', paddingTop: 16, textAlign: 'left' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               <History size={14} />
-              <span>Recent Rooms</span>
+              <span>My Canvas Rooms History</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
-              {recentRooms.map((room) => (
-                <button
-                  key={room.id}
-                  onClick={() => navigateToRoom(room.id)}
-                  className="tool-btn"
-                  style={{
-                    width: '100%',
-                    height: 36,
-                    padding: '0 12px',
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: 13,
-                    background: room.id === roomId ? 'var(--btn-hover-bg)' : 'transparent',
-                    border: '1px solid var(--bg-panel-border)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-main)' }}>
-                    <DoorOpen size={14} color="var(--accent-primary)" />
-                    <span>{room.id}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 180, overflowY: 'auto' }}>
+              {recentRooms.map((room) => {
+                const isEditing = editingRoomId === room.id;
+                const displayName = roomTitles[room.id] || room.id;
+
+                return (
+                  <div
+                    key={room.id}
+                    className="glass-panel"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      border: '1px solid var(--bg-panel-border)',
+                      gap: 8,
+                    }}
+                  >
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editTitleInput}
+                        onChange={(e) => setEditTitleInput(e.target.value)}
+                        onBlur={() => handleSaveRoomTitle(room.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveRoomTitle(room.id);
+                        }}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          padding: '4px 8px',
+                          borderRadius: 6,
+                          background: 'var(--bg-input)',
+                          border: '1px solid var(--input-border)',
+                          color: 'var(--text-main)',
+                          fontSize: 13,
+                          outline: 'none',
+                        }}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                        <DoorOpen size={15} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {displayName}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditTitleInput(displayName);
+                            setEditingRoomId(room.id);
+                          }}
+                          className="tool-btn"
+                          title="Rename Room"
+                          style={{ width: 22, height: 22, padding: 0 }}
+                        >
+                          <Edit3 size={11} color="var(--text-muted)" />
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => navigateToRoom(room.id)}
+                      className="btn-primary"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 12,
+                        borderRadius: 8,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {room.id === roomId ? 'Current' : 'Join →'}
+                    </button>
                   </div>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {room.id === roomId ? 'Current' : 'Re-join →'}
-                  </span>
-                </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
