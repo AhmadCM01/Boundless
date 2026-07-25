@@ -67,8 +67,9 @@ export const StickyObjectNode: React.FC<Props> = ({
 
   const handleSave = () => {
     setIsEditing(false);
+    if (!object || !onChange) return;
     const safeValue = typeof textValue === 'string' ? textValue.trim() : '';
-    const safeExisting = typeof object.text === 'string' ? object.text : '';
+    const safeExisting = typeof object?.text === 'string' ? object.text : '';
     if (safeValue !== safeExisting) {
       onChange({ text: safeValue || 'Sticky note...' });
     }
@@ -85,9 +86,9 @@ export const StickyObjectNode: React.FC<Props> = ({
     <>
       <Group
         ref={groupRef}
-        x={object.x}
-        y={object.y}
-        rotation={object.rotation}
+        x={object?.x ?? 0}
+        y={object?.y ?? 0}
+        rotation={object?.rotation ?? 0}
         draggable={!isEditing}
         onClick={(e) => {
           e.cancelBubble = true;
@@ -114,9 +115,9 @@ export const StickyObjectNode: React.FC<Props> = ({
       >
         {/* Sticky Background Card */}
         <Rect
-          width={object.width}
-          height={object.height}
-          fill={object.color || '#fef08a'}
+          width={object?.width ?? 180}
+          height={object?.height ?? 180}
+          fill={object?.color || '#fef08a'}
           cornerRadius={6}
           shadowColor="rgba(0, 0, 0, 0.4)"
           shadowBlur={12}
@@ -139,9 +140,9 @@ export const StickyObjectNode: React.FC<Props> = ({
         {/* Author Tag Footer */}
         <Text
           x={14}
-          y={object.height - 24}
-          width={object.width - 28}
-          text={`— ${object.author || 'Guest'}`}
+          y={(object?.height ?? 180) - 24}
+          width={(object?.width ?? 180) - 28}
+          text={`— ${object?.author || 'Guest'}`}
           fontSize={11}
           fontStyle="bold"
           fontFamily="Inter"
@@ -194,10 +195,11 @@ export const StickyObjectNode: React.FC<Props> = ({
             <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Edit Sticky Note</h4>
             <textarea
               ref={textareaRef}
-              value={typeof textValue === 'string' ? textValue : ''}
+              value={textValue ?? object?.text ?? ''}
               onChange={(e) => {
                 e.stopPropagation();
-                setTextValue(e.target.value);
+                const val = e?.target?.value;
+                setTextValue(typeof val === 'string' ? val : '');
               }}
               onKeyDown={(e) => {
                 e.stopPropagation();

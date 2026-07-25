@@ -66,8 +66,9 @@ export const TextObjectNode: React.FC<Props> = ({
 
   const handleSave = () => {
     setIsEditing(false);
+    if (!object || !onChange) return;
     const safeValue = typeof textValue === 'string' ? textValue.trim() : '';
-    const safeExisting = typeof object.text === 'string' ? object.text : '';
+    const safeExisting = typeof object?.text === 'string' ? object.text : '';
     if (safeValue !== safeExisting) {
       onChange({ text: safeValue || 'Text' });
     }
@@ -83,9 +84,9 @@ export const TextObjectNode: React.FC<Props> = ({
   return (
     <>
       <Group
-        x={object.x}
-        y={object.y}
-        rotation={object.rotation}
+        x={object?.x ?? 0}
+        y={object?.y ?? 0}
+        rotation={object?.rotation ?? 0}
         draggable={!isEditing}
         onClick={(e) => {
           e.cancelBubble = true;
@@ -181,10 +182,11 @@ export const TextObjectNode: React.FC<Props> = ({
             <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Edit Text Block</h4>
             <textarea
               ref={textareaRef}
-              value={typeof textValue === 'string' ? textValue : ''}
+              value={textValue ?? object?.text ?? ''}
               onChange={(e) => {
                 e.stopPropagation();
-                setTextValue(e.target.value);
+                const val = e?.target?.value;
+                setTextValue(typeof val === 'string' ? val : '');
               }}
               onKeyDown={(e) => {
                 e.stopPropagation();
