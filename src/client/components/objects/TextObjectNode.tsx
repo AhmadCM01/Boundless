@@ -28,10 +28,10 @@ export const TextObjectNode: React.FC<Props> = ({
     setTextValue(typeof object.text === 'string' ? object.text : '');
   }, [object.text]);
 
-  // Listen for custom trigger edit event from property bar or keyboard shortcut
+  // Edit trigger listener
   useEffect(() => {
     const handleCustomTrigger = (e: any) => {
-      if (e.detail && e.detail.id === object.id) {
+      if (e.detail?.id === object.id) {
         mountTimeRef.current = Date.now();
         setIsEditing(true);
       }
@@ -40,7 +40,6 @@ export const TextObjectNode: React.FC<Props> = ({
     return () => window.removeEventListener('boundless-trigger-text-edit', handleCustomTrigger);
   }, [object.id]);
 
-  // Auto-focus and select textarea text on edit modal mount
   useEffect(() => {
     if (isEditing) {
       const timer = setTimeout(() => {
@@ -75,7 +74,6 @@ export const TextObjectNode: React.FC<Props> = ({
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    // Prevent double-click tail click from closing modal immediately upon mounting
     if (Date.now() - mountTimeRef.current < 300) {
       return;
     }

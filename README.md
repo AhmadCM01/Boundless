@@ -75,6 +75,23 @@ Boundless utilizes a unified Node.js/Fastify architecture serving both static pr
 
 ---
 
+## 🚧 Known Limitations (End of Day 1 Checkpoint)
+
+- **Text/Sticky Note Edit State**: The React-Konva edit overlay is currently throwing a `Cannot read properties` error during the write-state due to uninitialized Yjs object properties. (Pending strict null-guard implementation).
+- **Session Travel (Replay) Divergence**: Client-side initialization of the scratch Y.Doc is dropping the base state, leading to delta divergence during playback.
+- **Physics Engine (Matter.js)**: The attract/repel behaviors are currently disabled as they flood the Yjs WebSocket with excessive coordinate mutations. (Pending throttled sync implementation).
+- **Mobile Viewport Layout**: Absolute-positioned UI flyouts (like the Shape menu) are currently clipping on mobile breakpoints.
+
+---
+
+## 🚀 Day 2 Roadmap (Next Steps)
+
+- **Priority 1**: Stabilize the text edit overlay with safe DOM portals.
+- **Priority 2**: Implement CSS media queries to replace the current `overflowX` mobile wrappers.
+- **Priority 3**: Throttle Matter.js physics calculations to local client states, syncing to Yjs only on rest.
+
+---
+
 ## 🎨 Frontend Logic & Performance Engineering
 
 ### 1. High-Performance 2D Rendering

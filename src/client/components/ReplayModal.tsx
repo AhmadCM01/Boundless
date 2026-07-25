@@ -60,15 +60,13 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
     const scratchMap = scratchDoc.getMap<CanvasObject>('objects');
 
     try {
-      // Step 1: Always apply base state snapshot updates[0] first
-      if (updates[0] && updates[0].deltaBase64) {
+      if (updates[0]?.deltaBase64) {
         const baseBytes = base64ToUint8Array(updates[0].deltaBase64);
         Y.applyUpdate(scratchDoc, baseBytes);
       }
 
-      // Step 2: Sequentially apply historical deltas from index 1 up to currentIndex
       for (let i = 1; i <= currentIndex && i < updates.length; i++) {
-        if (updates[i] && updates[i].deltaBase64) {
+        if (updates[i]?.deltaBase64) {
           const bytes = base64ToUint8Array(updates[i].deltaBase64);
           Y.applyUpdate(scratchDoc, bytes);
         }
