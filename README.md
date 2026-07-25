@@ -27,7 +27,7 @@
 - **Canvas Rendering**: Konva.js (`react-konva`, `konva`)
 - **Frontend**: React 19, TypeScript, Vite, Lucide Icons, Vanilla Glassmorphism CSS
 - **Backend**: Fastify, `@fastify/static`, `@fastify/multipart`, `ws`
-- **Deployment**: Railway (Single-service Node.js deployment serving static React client and WebSocket upgrades on a single port).
+- **Deployment**: Render (Single-service Web Service serving static React client and WebSocket upgrades on a single port).
 
 ---
 
@@ -54,14 +54,27 @@ npm start
 
 ---
 
-## 🌐 Railway Deployment
+## 🌐 Render Deployment
 
-Boundless is configured for single-service Railway deployment:
-- **Build Command**: `npm run build`
-- **Start Command**: `npm start`
-- **Port**: Automatic Railway `process.env.PORT` binding.
+Boundless is configured for single-service Web Service deployment on **Render**:
 
-**Live Railway Demo URL**: `https://boundless-production.up.railway.app` *(Replace with your GitHub repository's connected Railway service URL)*.
+1. Log into your [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** $\rightarrow$ **Web Service**.
+3. Connect your GitHub repository (`AhmadCM01/Boundless`).
+4. Configure the service settings:
+   - **Environment**: `Node`
+   - **Region**: Any preferred region
+   - **Branch**: `main`
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+   - **Instance Type**: `Free`
+5. Click **Create Web Service**. Render automatically detects `process.env.PORT` and serves both the static frontend and WebSocket `/yjs` connection on a single port.
+
+**Live Render Demo URL**: `https://boundless.onrender.com` *(Replace with your deployed Render Web Service URL)*.
+
+> [!IMPORTANT]
+> **Render Free-Tier Cold Starts**:
+> Render's free tier automatically puts the Web Service to sleep after 15 minutes of inactivity. When woken up by a new request, the initial cold start takes approximately **30–60 seconds**. For live demos or judging sessions, open the live URL a few minutes in advance to spin up the instance and ensure a zero-delay experience!
 
 ---
 
