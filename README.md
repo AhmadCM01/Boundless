@@ -70,7 +70,7 @@ Boundless is configured for single-service Web Service deployment on **Render**:
    - **Instance Type**: `Free`
 5. Click **Create Web Service**. Render automatically detects `process.env.PORT` and serves both the static frontend and WebSocket `/yjs` connection on a single port.
 
-**Live Render Demo URL**: `https://boundless.onrender.com` *(Replace with your deployed Render Web Service URL)*.
+**Live Render Demo URL**: [https://boundless-4zml.onrender.com](https://boundless-4zml.onrender.com)
 
 > [!IMPORTANT]
 > **Render Free-Tier Cold Starts**:
