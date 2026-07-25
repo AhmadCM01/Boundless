@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Rect, Text, Group, Transformer } from 'react-konva';
 import { StickyObject } from '../../../shared/types';
 import Konva from 'konva';
@@ -124,8 +125,8 @@ export const StickyObjectNode: React.FC<Props> = ({
         />
       )}
 
-      {/* HTML Sticky Note Editing Dialog */}
-      {isEditing && (
+      {/* HTML Sticky Note Editing Dialog Portal directly attached to document.body */}
+      {isEditing && ReactDOM.createPortal(
         <div
           style={{
             position: 'fixed',
@@ -133,21 +134,21 @@ export const StickyObjectNode: React.FC<Props> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(4px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 3000,
+            zIndex: 99999,
           }}
           onClick={handleSave}
         >
           <div
             className="glass-panel animate-fade-in"
-            style={{ width: 360, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
+            style={{ width: 380, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)' }}>Edit Sticky Note</h4>
+            <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Edit Sticky Note</h4>
             <textarea
               value={textValue}
               onChange={(e) => setTextValue(e.target.value)}
@@ -157,27 +158,27 @@ export const StickyObjectNode: React.FC<Props> = ({
                   handleSave();
                 }
               }}
-              rows={4}
+              rows={5}
               autoFocus
               style={{
                 width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
+                padding: '12px 14px',
+                borderRadius: 10,
                 background: 'var(--bg-input)',
                 border: '1px solid var(--input-border)',
                 color: 'var(--text-main)',
-                fontSize: 15,
+                fontSize: 16,
                 fontFamily: 'Inter',
                 resize: 'vertical',
                 outline: 'none',
               }}
             />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
                 className="tool-btn"
-                style={{ padding: '6px 12px', width: 'auto', height: 'auto', fontSize: 13 }}
+                style={{ padding: '8px 16px', width: 'auto', height: 'auto', fontSize: 13 }}
               >
                 Cancel
               </button>
@@ -185,13 +186,14 @@ export const StickyObjectNode: React.FC<Props> = ({
                 type="button"
                 onClick={handleSave}
                 className="btn-primary"
-                style={{ padding: '6px 16px', fontSize: 13 }}
+                style={{ padding: '8px 20px', fontSize: 14 }}
               >
                 Done
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

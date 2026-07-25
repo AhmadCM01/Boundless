@@ -15,9 +15,9 @@ export const ReactionsBar: React.FC<{ stageX: number; stageY: number; zoom: numb
     const centerWorldX = (window.innerWidth / 2 - stageX) / zoom;
     const centerWorldY = (window.innerHeight / 2 - stageY) / zoom;
 
-    const currentUser = provider.awareness.getLocalState()?.user || {};
-    provider.awareness.setLocalStateField('user', {
-      ...currentUser,
+    const current = provider.awareness.getLocalState() || {};
+    provider.awareness.setLocalState({
+      ...current,
       reaction: {
         emoji,
         x: centerWorldX,
@@ -25,6 +25,7 @@ export const ReactionsBar: React.FC<{ stageX: number; stageY: number; zoom: numb
         timestamp: Date.now(),
       },
     });
+    console.log('🎉 Reaction sent:', emoji);
   };
 
   return (

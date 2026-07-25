@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Trash2, Pipette } from 'lucide-react';
+import { Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface Props {
   selectedId: string | null;
@@ -47,6 +47,18 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
     } else if (activeObj.type === 'text') {
       updateObject(selectedId, { fill: colorValue });
     }
+  };
+
+  const handleBringToFront = () => {
+    const allZ = Array.from(canvasObjects.values()).map((o) => o.zIndex || 0);
+    const maxZ = Math.max(...allZ, 0);
+    updateObject(selectedId, { zIndex: maxZ + 1 });
+  };
+
+  const handleSendToBack = () => {
+    const allZ = Array.from(canvasObjects.values()).map((o) => o.zIndex || 0);
+    const minZ = Math.min(...allZ, 0);
+    updateObject(selectedId, { zIndex: minZ - 1 });
   };
 
   const handleDelete = () => {
@@ -131,6 +143,28 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
             }}
           />
         </label>
+      </div>
+
+      <div style={{ width: 1, height: 20, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
+
+      {/* Layering Z-Index Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <button
+          title="Bring to Front"
+          onClick={handleBringToFront}
+          className="tool-btn"
+          style={{ width: 28, height: 28 }}
+        >
+          <ArrowUp size={14} />
+        </button>
+        <button
+          title="Send to Back"
+          onClick={handleSendToBack}
+          className="tool-btn"
+          style={{ width: 28, height: 28 }}
+        >
+          <ArrowDown size={14} />
+        </button>
       </div>
 
       <div style={{ width: 1, height: 20, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
