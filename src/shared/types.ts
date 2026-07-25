@@ -12,6 +12,7 @@ export interface BaseCanvasObject {
   createdBy: string;
   createdAt: number;
   updatedAt: number;
+  groupId?: string;
 }
 
 export interface TextObject extends BaseCanvasObject {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Group, Circle, Text as KonvaText, Line } from 'react-konva';
+import { Stage, Layer, Group, Circle, Text as KonvaText, Line, Rect } from 'react-konva';
 import { useRoom } from '../context/RoomContext';
 import { useViewportCulling } from '../hooks/useViewportCulling';
 import { ToolMode } from './Toolbar';
@@ -24,6 +24,8 @@ interface CanvasProps {
   setZoom: (z: number) => void;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
+  selectedIds?: string[];
+  setSelectedIds?: (ids: string[]) => void;
   onOpenAudioRecorder: () => void;
   stageRef: React.RefObject<Konva.Stage | null>;
   followingUserId: string | null;
@@ -70,6 +72,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   setZoom,
   selectedId,
   setSelectedId,
+  selectedIds,
+  setSelectedIds,
   onOpenAudioRecorder,
   stageRef,
   followingUserId,
@@ -78,6 +82,21 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [isDrawingPen, setIsDrawingPen] = useState(false);
   const [currentPenPoints, setCurrentPenPoints] = useState<number[]>([]);
+
+  // Marquee Selection State
+  const [marquee, setMarquee] = useState<{
+    isSelecting: boolean;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  }>({
+    isSelecting: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+  });
 
   const [windowDimensions, setWindowDimensions] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -171,22 +190,33 @@ export const Canvas: React.FC<CanvasProps> = ({
     setStageY(newStageY);
   };
 
-  // Pointer Down — Pen Drawing Start
+  // Pointer Down — Pen Drawing Start or Marquee Select Start
   const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const worldX = (pointer.x - stageX) / (zoom || 1);
+    const worldY = (pointer.y - stageY) / (zoom || 1);
+
     if (activeTool === 'pen' && e.target === stageRef.current) {
-      const stage = stageRef.current;
-      if (!stage) return;
-      const pointer = stage.getPointerPosition();
-      if (pointer) {
-        const worldX = (pointer.x - stageX) / (zoom || 1);
-        const worldY = (pointer.y - stageY) / (zoom || 1);
-        setIsDrawingPen(true);
-        setCurrentPenPoints([worldX, worldY]);
-      }
+      setIsDrawingPen(true);
+      setCurrentPenPoints([worldX, worldY]);
+    } else if (activeTool === 'select' && e.target === stageRef.current) {
+      setMarquee({
+        isSelecting: true,
+        startX: worldX,
+        startY: worldY,
+        currentX: worldX,
+        currentY: worldY,
+      });
+      if (setSelectedIds) setSelectedIds([]);
+      setSelectedId(null);
     }
   };
 
-  // Pointer Move — Broadcast Cursor & Extend Pen Stroke
+  // Pointer Move — Broadcast Cursor, Extend Pen Stroke, or Resize Selection Marquee
   const handlePointerMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -199,11 +229,17 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       if (isDrawingPen && activeTool === 'pen') {
         setCurrentPenPoints((prev) => [...prev, worldX, worldY]);
+      } else if (marquee.isSelecting) {
+        setMarquee((prev) => ({
+          ...prev,
+          currentX: worldX,
+          currentY: worldY,
+        }));
       }
     }
   };
 
-  // Pointer Up — Finish Pen Drawing Stroke
+  // Pointer Up — Finish Pen Drawing Stroke or Calculate Marquee AABB Intersection
   const handlePointerUp = () => {
     if (isDrawingPen && currentPenPoints.length >= 4) {
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -235,14 +271,56 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       addObject(newPenObj);
     }
+
+    if (marquee.isSelecting) {
+      const minX = Math.min(marquee.startX, marquee.currentX);
+      const maxX = Math.max(marquee.startX, marquee.currentX);
+      const minY = Math.min(marquee.startY, marquee.currentY);
+      const maxY = Math.max(marquee.startY, marquee.currentY);
+
+      if (maxX - minX > 5 || maxY - minY > 5) {
+        const intersectedIds: string[] = [];
+        canvasObjects.forEach((obj) => {
+          const w = obj.width || 100;
+          const h = obj.height || 100;
+          const isIntersecting = !(
+            obj.x > maxX ||
+            obj.x + w < minX ||
+            obj.y > maxY ||
+            obj.y + h < minY
+          );
+          if (isIntersecting) {
+            intersectedIds.push(obj.id);
+          }
+        });
+
+        if (setSelectedIds && intersectedIds.length > 0) {
+          setSelectedIds(intersectedIds);
+          justFinishedMarquee.current = true;
+        } else if (intersectedIds.length === 1) {
+          setSelectedId(intersectedIds[0]);
+          justFinishedMarquee.current = true;
+        }
+      }
+
+      setMarquee({ isSelecting: false, startX: 0, startY: 0, currentX: 0, currentY: 0 });
+    }
+
     setIsDrawingPen(false);
     setCurrentPenPoints([]);
   };
 
+  const justFinishedMarquee = useRef(false);
+
   // Stage click — deselect
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (e.target === stageRef.current && activeTool !== 'pen') {
+      if (justFinishedMarquee.current) {
+        justFinishedMarquee.current = false;
+        return;
+      }
       setSelectedId(null);
+      if (setSelectedIds) setSelectedIds([]);
     }
   };
 
@@ -278,8 +356,32 @@ export const Canvas: React.FC<CanvasProps> = ({
         {/* Layer 2: Culled Canvas Objects */}
         <Layer key="objects-layer">
           {visibleObjects.map((obj) => {
-            const isSelected = obj.id === selectedId;
-            const onSelect = () => setSelectedId(obj.id);
+            const isSelected = (selectedIds && selectedIds.includes(obj.id)) || obj.id === selectedId;
+            const onSelect = (e?: Konva.KonvaEventObject<MouseEvent>) => {
+              const isShiftKey = e?.evt?.shiftKey;
+              let targetIds = [obj.id];
+
+              // If object belongs to a group, automatically expand to all group members
+              if (obj.groupId) {
+                targetIds = Array.from(canvasObjects.values())
+                  .filter((o) => o.groupId === obj.groupId)
+                  .map((o) => o.id);
+              }
+
+              if (isShiftKey && setSelectedIds) {
+                const current = new Set(selectedIds || []);
+                targetIds.forEach((id) => {
+                  if (current.has(id)) current.delete(id);
+                  else current.add(id);
+                });
+                const updated = Array.from(current);
+                setSelectedIds(updated);
+                setSelectedId(updated[0] || null);
+              } else {
+                setSelectedId(obj.id);
+                if (setSelectedIds) setSelectedIds(targetIds);
+              }
+            };
             const onChange = (patch: Partial<CanvasObject>) => updateObject(obj.id, patch);
 
             switch (obj.type) {
@@ -333,6 +435,21 @@ export const Canvas: React.FC<CanvasProps> = ({
               tension={0.5}
               lineCap="round"
               lineJoin="round"
+              listening={false}
+            />
+          )}
+
+          {/* Active Drag-to-Select Marquee Overlay */}
+          {marquee.isSelecting && (
+            <Rect
+              x={Math.min(marquee.startX, marquee.currentX)}
+              y={Math.min(marquee.startY, marquee.currentY)}
+              width={Math.abs(marquee.currentX - marquee.startX)}
+              height={Math.abs(marquee.currentY - marquee.startY)}
+              fill="rgba(59, 130, 246, 0.12)"
+              stroke="#3b82f6"
+              strokeWidth={1}
+              dash={[4, 4]}
               listening={false}
             />
           )}

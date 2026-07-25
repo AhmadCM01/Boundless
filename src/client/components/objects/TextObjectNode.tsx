@@ -16,12 +16,13 @@ export const TextObjectNode: React.FC<Props> = ({
   onSelect,
   onChange,
 }) => {
+  const groupRef = useRef<Konva.Group>(null);
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
-    if (isSelected && trRef.current && textRef.current) {
-      trRef.current.nodes([textRef.current]);
+    if (isSelected && trRef.current && groupRef.current) {
+      trRef.current.nodes([groupRef.current]);
       trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
@@ -34,6 +35,7 @@ export const TextObjectNode: React.FC<Props> = ({
   return (
     <>
       <Group
+        ref={groupRef}
         x={object?.x ?? 0}
         y={object?.y ?? 0}
         rotation={object?.rotation ?? 0}
@@ -54,11 +56,29 @@ export const TextObjectNode: React.FC<Props> = ({
           e.cancelBubble = true;
           handleTriggerEdit();
         }}
-        onDragEnd={(e) => {
-          onChange({
-            x: e.target.x(),
-            y: e.target.y(),
-          });
+        onDragEnd={() => {
+          if (groupRef.current) {
+            onChange({
+              x: groupRef.current.x(),
+              y: groupRef.current.y(),
+            });
+          }
+        }}
+        onTransformEnd={() => {
+          const group = groupRef.current;
+          if (group) {
+            const scaleX = group.scaleX();
+            group.scaleX(1);
+            group.scaleY(1);
+            const baseWidth = object?.width || textRef.current?.width() || 200;
+            const newWidth = Math.max(50, baseWidth * scaleX);
+            onChange({
+              x: group.x(),
+              y: group.y(),
+              width: newWidth,
+              rotation: group.rotation(),
+            });
+          }
         }}
       >
         <Text
@@ -69,20 +89,6 @@ export const TextObjectNode: React.FC<Props> = ({
           fill={object?.fill || '#e5e7eb'}
           width={object?.width}
           wrap="word"
-          onTransformEnd={() => {
-            const node = textRef.current;
-            if (node) {
-              const scaleX = node.scaleX();
-              node.scaleX(1);
-              node.scaleY(1);
-              onChange({
-                x: node.x(),
-                y: node.y(),
-                width: Math.max(50, node.width() * scaleX),
-                rotation: node.rotation(),
-              });
-            }
-          }}
         />
       </Group>
 

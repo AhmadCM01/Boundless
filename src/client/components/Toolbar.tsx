@@ -214,7 +214,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         display: 'flex',
         alignItems: 'center',
         flexWrap: 'nowrap',
-        overflowX: 'auto',
+        overflow: 'visible',
         gap: 6,
         maxWidth: 'calc(100vw - 24px)',
         zIndex: 100,

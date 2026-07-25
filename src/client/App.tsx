@@ -12,6 +12,7 @@ import { ReactionsBar } from './components/ReactionsBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Konva from 'konva';
 
+import { GroupActionBar } from './components/GroupActionBar';
 import { TextEditOverlay } from './components/TextEditOverlay';
 
 export const AppContent: React.FC = () => {
@@ -20,6 +21,7 @@ export const AppContent: React.FC = () => {
   const [stageY, setStageY] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false);
   const [isReplayOpen, setIsReplayOpen] = useState(false);
@@ -45,7 +47,7 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: 'var(--bg-dark)' }}>
+    <div style={{ width: '100vw', height: '100dvh', minHeight: '-webkit-fill-available', position: 'relative', overflow: 'hidden', backgroundColor: 'var(--bg-dark)' }}>
       <Navbar
         stageRef={stageRef}
         onOpenReplay={() => setIsReplayOpen(true)}
@@ -61,6 +63,14 @@ export const AppContent: React.FC = () => {
         zoom={zoom}
       />
 
+      <GroupActionBar
+        selectedIds={selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : [])}
+        setSelectedIds={setSelectedIds}
+        stageX={stageX}
+        stageY={stageY}
+        zoom={zoom}
+      />
+
       <Canvas
         activeTool={activeTool}
         stageX={stageX}
@@ -70,7 +80,13 @@ export const AppContent: React.FC = () => {
         setStageY={setStageY}
         setZoom={setZoom}
         selectedId={selectedId}
-        setSelectedId={setSelectedId}
+        setSelectedId={(id) => {
+          setSelectedId(id);
+          if (id) setSelectedIds([id]);
+          else setSelectedIds([]);
+        }}
+        selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
         onOpenAudioRecorder={() => setIsAudioRecorderOpen(true)}
         stageRef={stageRef}
         followingUserId={followingUserId}

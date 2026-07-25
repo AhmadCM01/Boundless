@@ -150,8 +150,25 @@ button {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* ── Responsive Mobile Layout (<768px) ─────────────────────────── */
+html, body, #root {
+  height: 100%;
+  height: -webkit-fill-available;
+  min-height: 100dvh;
+}
+
+/* Desktop vs Mobile Toggle Utility Classes */
+.mobile-only-control {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
+  .desktop-only-control {
+    display: none !important;
+  }
+  .mobile-only-control {
+    display: flex !important;
+  }
+
   /* Scale down toolbar buttons to 36px by 36px */
   .tool-btn {
     width: 36px !important;
@@ -164,16 +181,25 @@ button {
     display: none !important;
   }
 
+  /* Truncate room title badge on mobile */
+  .room-title-text {
+    max-width: 90px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
   /* Hide extra collaborator avatars on mobile */
   .collaborator-avatar-extra {
     display: none !important;
   }
 
-  /* Horizontally scrollable main toolbar dock without wrapping */
+  /* Horizontally scrollable main toolbar dock with safe area inset */
   .main-toolbar-dock {
     flex-wrap: nowrap !important;
     overflow-x: auto !important;
     max-width: calc(100vw - 24px) !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none !important;
   }
@@ -181,11 +207,11 @@ button {
     display: none !important;
   }
 
-  /* Position ReactionsBar above bottom toolbar on mobile */
+  /* Position ReactionsBar above bottom toolbar on mobile with safe area inset */
   .reactions-bar-dock {
-    bottom: 84px !important;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
     left: 12px !important;
-    height: 48px !important;
+    height: 44px !important;
   }
 
   /* Hide Minimap entirely on mobile to prevent collision */
