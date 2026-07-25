@@ -24,7 +24,7 @@ export interface TextObject extends BaseCanvasObject {
 
 export interface ShapeObject extends BaseCanvasObject {
   type: 'shape';
-  shapeType: 'rect' | 'circle' | 'star' | 'triangle';
+  shapeType: 'rect' | 'circle' | 'star' | 'triangle' | 'line' | 'arrow';
   fill: string;
   stroke: string;
   strokeWidth: number;

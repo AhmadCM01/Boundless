@@ -1,16 +1,19 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { CanvasObject, ShapeObject, StickyObject, TextObject, ImageObject, AudioObject } from '../../shared/types';
+import { ShapeObject, StickyObject, TextObject, ImageObject } from '../../shared/types';
 import {
   MousePointer,
   Hand,
   Type,
   Square,
+  Circle as CircleIcon,
+  Star,
+  Triangle,
+  Minus,
+  ArrowUpRight,
   StickyNote,
   Image as ImageIcon,
-  Mic,
   Zap,
-  Trash2,
 } from 'lucide-react';
 
 export type ToolMode = 'select' | 'pan' | 'text' | 'shape' | 'sticky' | 'image' | 'audio';
@@ -32,8 +35,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   stageY,
   zoom,
 }) => {
-  const { addObject, canvasObjects, deleteObject, username } = useRoom();
+  const { addObject, canvasObjects, username } = useRoom();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isShapeFlyoutOpen, setIsShapeFlyoutOpen] = useState(false);
 
   // Get world coordinate center of screen for creating new objects
   const getCenterCanvasPos = () => {
@@ -60,7 +64,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       text: 'Double click to edit text...',
       fontSize: 20,
       fontFamily: 'Inter',
-      fill: '#f3f4f6',
+      fill: '#1e293b',
       createdBy: username || 'Guest',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -70,7 +74,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   // Add Shape Object
-  const handleAddShape = (shapeType: 'rect' | 'circle' | 'star' | 'triangle') => {
+  const handleAddShape = (shapeType: 'rect' | 'circle' | 'star' | 'triangle' | 'line' | 'arrow') => {
     const pos = getCenterCanvasPos();
     const newShape: ShapeObject = {
       id: `shape_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -78,18 +82,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       shapeType,
       x: pos.x,
       y: pos.y,
-      width: 140,
-      height: 140,
+      width: shapeType === 'line' || shapeType === 'arrow' ? 180 : 140,
+      height: shapeType === 'line' || shapeType === 'arrow' ? 100 : 140,
       rotation: 0,
       zIndex: canvasObjects.size + 1,
       fill: '#6366f1',
-      stroke: '#818cf8',
+      stroke: '#6366f1',
       strokeWidth: 2,
       createdBy: username || 'Guest',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
     addObject(newShape);
+    setIsShapeFlyoutOpen(false);
     setActiveTool('select');
   };
 
@@ -232,10 +237,83 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <Type size={18} />
       </button>
 
-      {/* Add Shape */}
-      <button title="Add Rectangle" className="tool-btn" onClick={() => handleAddShape('rect')}>
-        <Square size={18} />
-      </button>
+      {/* Figma-Style Shape Tool Flyout Popover */}
+      <div style={{ position: 'relative' }}>
+        <button
+          title="Shapes Menu"
+          className={`tool-btn ${isShapeFlyoutOpen ? 'active' : ''}`}
+          onClick={() => setIsShapeFlyoutOpen(!isShapeFlyoutOpen)}
+        >
+          <Square size={18} />
+        </button>
+
+        {isShapeFlyoutOpen && (
+          <div
+            className="glass-panel animate-fade-in"
+            style={{
+              position: 'absolute',
+              bottom: 64,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: 8,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              minWidth: 150,
+              zIndex: 200,
+            }}
+          >
+            <button
+              onClick={() => handleAddShape('rect')}
+              className="tool-btn"
+              style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+            >
+              <Square size={16} />
+              <span>Rectangle</span>
+            </button>
+            <button
+              onClick={() => handleAddShape('circle')}
+              className="tool-btn"
+              style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+            >
+              <CircleIcon size={16} />
+              <span>Ellipse</span>
+            </button>
+            <button
+              onClick={() => handleAddShape('triangle')}
+              className="tool-btn"
+              style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+            >
+              <Triangle size={16} />
+              <span>Triangle</span>
+            </button>
+            <button
+              onClick={() => handleAddShape('star')}
+              className="tool-btn"
+              style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+            >
+              <Star size={16} />
+              <span>Star</span>
+            </button>
+            <button
+              onClick={() => handleAddShape('line')}
+              className="tool-btn"
+              style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+            >
+              <Minus size={16} />
+              <span>Line</span>
+            </button>
+            <button
+              onClick={() => handleAddShape('arrow')}
+              className="tool-btn"
+              style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+            >
+              <ArrowUpRight size={16} />
+              <span>Arrow</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Add Sticky Note */}
       <button title="Add Sticky Note" className="tool-btn" onClick={handleAddSticky}>

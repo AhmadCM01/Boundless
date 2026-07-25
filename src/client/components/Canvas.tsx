@@ -19,6 +19,8 @@ interface CanvasProps {
   setStageX: (x: number) => void;
   setStageY: (y: number) => void;
   setZoom: (z: number) => void;
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
   onOpenAudioRecorder: () => void;
 }
 
@@ -30,10 +32,11 @@ export const Canvas: React.FC<CanvasProps> = ({
   setStageX,
   setStageY,
   setZoom,
+  selectedId,
+  setSelectedId,
   onOpenAudioRecorder,
 }) => {
   const { canvasObjects, updateObject, updateCursor, updateViewport, onlineUsers } = useRoom();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [windowDimensions, setWindowDimensions] = useState({
     width: window.innerWidth,

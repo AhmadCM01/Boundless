@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Share2, Check, Sparkles, Wifi, WifiOff, Sun, Moon } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
+import { Share2, Check, Wifi, WifiOff, Sun, Moon } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { roomId, username, userColor, onlineUsers, isConnected, setUsername } = useRoom();
@@ -53,18 +54,7 @@ export const Navbar: React.FC = () => {
     }}>
       {/* Brand Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 38,
-          height: 38,
-          borderRadius: 10,
-          background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 0 16px var(--accent-glow)'
-        }}>
-          <Sparkles size={20} color="#fff" />
-        </div>
+        <BrandLogo size={36} />
         <div>
           <h1 style={{
             fontFamily: 'var(--font-heading)',

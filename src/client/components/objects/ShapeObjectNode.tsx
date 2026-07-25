@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Rect, Circle, Star, Line, Group, Transformer } from 'react-konva';
+import { Rect, Circle, Star, Line, Arrow, Group, Transformer } from 'react-konva';
 import { ShapeObject } from '../../../shared/types';
 import Konva from 'konva';
 
@@ -29,11 +29,12 @@ export const ShapeObjectNode: React.FC<Props> = ({
   const commonProps = {
     ref: shapeRef,
     fill: object.fill || '#6366f1',
-    stroke: object.stroke || '#818cf8',
+    stroke: object.stroke || object.fill || '#818cf8',
     strokeWidth: object.strokeWidth || 2,
     shadowColor: 'rgba(0,0,0,0.3)',
     shadowBlur: 10,
     shadowOffsetY: 4,
+    perfectDrawEnabled: false, // Ensures crisp line rendering across zoom levels
   };
 
   const handleTransformEnd = () => {
@@ -85,6 +86,24 @@ export const ShapeObjectNode: React.FC<Props> = ({
               0, object.height,
             ]}
             closed
+          />
+        );
+      case 'line':
+        return (
+          <Line
+            {...commonProps}
+            points={[0, 0, object.width, object.height]}
+            strokeWidth={object.strokeWidth || 4}
+          />
+        );
+      case 'arrow':
+        return (
+          <Arrow
+            {...commonProps}
+            points={[0, 0, object.width, object.height]}
+            pointerLength={14}
+            pointerWidth={14}
+            strokeWidth={object.strokeWidth || 4}
           />
         );
       case 'rect':
