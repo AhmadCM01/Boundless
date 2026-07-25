@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { RoomProvider } from './context/RoomContext';
 import { Navbar } from './components/Navbar';
 import { Toolbar, ToolMode } from './components/Toolbar';
