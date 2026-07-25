@@ -10,6 +10,7 @@ import { ImageObjectNode } from './objects/ImageObjectNode';
 import { AudioObjectNode } from './objects/AudioObjectNode';
 import { CanvasObject, TextObject, ShapeObject, StickyObject, ImageObject, AudioObject } from '../../shared/types';
 import { physicsEngine } from '../physics/PhysicsEngine';
+import { CanvasObjectErrorBoundary } from './CanvasObjectErrorBoundary';
 import Konva from 'konva';
 
 interface CanvasProps {
@@ -218,15 +219,35 @@ export const Canvas: React.FC<CanvasProps> = ({
 
             switch (obj.type) {
               case 'text':
-                return <TextObjectNode key={obj.id} object={obj as TextObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
+                return (
+                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                    <TextObjectNode object={obj as TextObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
+                  </CanvasObjectErrorBoundary>
+                );
               case 'shape':
-                return <ShapeObjectNode key={obj.id} object={obj as ShapeObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
+                return (
+                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                    <ShapeObjectNode object={obj as ShapeObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
+                  </CanvasObjectErrorBoundary>
+                );
               case 'sticky':
-                return <StickyObjectNode key={obj.id} object={obj as StickyObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
+                return (
+                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                    <StickyObjectNode object={obj as StickyObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
+                  </CanvasObjectErrorBoundary>
+                );
               case 'image':
-                return <ImageObjectNode key={obj.id} object={obj as ImageObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
+                return (
+                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                    <ImageObjectNode object={obj as ImageObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
+                  </CanvasObjectErrorBoundary>
+                );
               case 'audio':
-                return <AudioObjectNode key={obj.id} object={obj as AudioObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} stageX={stageX} stageY={stageY} zoom={zoom} viewportWidth={windowDimensions.width} viewportHeight={windowDimensions.height} />;
+                return (
+                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                    <AudioObjectNode object={obj as AudioObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} stageX={stageX} stageY={stageY} zoom={zoom} />
+                  </CanvasObjectErrorBoundary>
+                );
               default:
                 return null;
             }
