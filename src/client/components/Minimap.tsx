@@ -47,7 +47,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="glass-panel"
+        className="glass-panel minimap-dock"
         title="Show Minimap Radar"
         style={{
           position: 'absolute',
@@ -70,7 +70,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
 
   return (
     <div
-      className="glass-panel"
+      className="glass-panel minimap-dock"
       style={{
         position: 'absolute',
         bottom: isMobile ? 88 : 24,

@@ -203,21 +203,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <div
-      className="glass-panel"
+      className="glass-panel main-toolbar-dock"
       style={{
         position: 'absolute',
         bottom: 24,
         left: '50%',
         transform: 'translateX(-50%)',
-        minHeight: 56,
-        height: 'auto',
-        padding: '6px 12px',
+        height: 56,
+        padding: '0 12px',
         display: 'flex',
         alignItems: 'center',
-        flexWrap: 'wrap' as const,
+        flexWrap: 'nowrap',
+        overflowX: 'auto',
         gap: 6,
         maxWidth: 'calc(100vw - 24px)',
-        overflow: 'visible',
         zIndex: 100,
       }}
     >

@@ -29,7 +29,7 @@ export const ReactionsBar: React.FC<{ stageX: number; stageY: number; zoom: numb
 
   return (
     <div
-      className="glass-panel"
+      className="glass-panel reactions-bar-dock"
       style={{
         position: 'absolute',
         bottom: 24,

@@ -89,16 +89,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         top: 12,
         left: 12,
         right: 12,
-        minHeight: 56,
-        height: 'auto',
+        height: 56,
         padding: '0 12px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: 'wrap' as const,
-        gap: 6,
+        flexWrap: 'nowrap',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        gap: 8,
         maxWidth: 'calc(100vw - 24px)',
-        overflow: 'visible',
         zIndex: 100,
       }}
     >
@@ -145,12 +145,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           {isConnected ? (
             <>
               <Wifi size={14} color="#10b981" />
-              <span style={{ color: '#10b981', fontWeight: 600 }}>Live Sync</span>
+              <span className="hide-on-mobile" style={{ color: '#10b981', fontWeight: 600 }}>Live Sync</span>
             </>
           ) : (
             <>
               <WifiOff size={14} color="#ef4444" />
-              <span style={{ color: '#ef4444', fontWeight: 600 }}>Offline / Reconnecting</span>
+              <span className="hide-on-mobile" style={{ color: '#ef4444', fontWeight: 600 }}>Offline</span>
             </>
           )}
         </div>
@@ -201,6 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               key={user.userId || idx}
               title={`Click to Follow ${user.username || 'Collaborator'}`}
               onClick={() => setFollowingUserId(user.userId || null)}
+              className={idx >= 1 ? 'collaborator-avatar-extra' : ''}
               style={{
                 width: 32,
                 height: 32,
@@ -261,10 +262,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={copyInviteLink}
           className="btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, height: 40 }}
+          title={copied ? 'Link Copied!' : 'Share Room Link'}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, height: 38, padding: '0 12px' }}
         >
           {copied ? <Check size={16} /> : <Share2 size={16} />}
-          <span>{copied ? 'Link Copied!' : 'Share Room'}</span>
+          <span className="hide-on-mobile">{copied ? 'Link Copied!' : 'Share Room'}</span>
         </button>
 
         {/* Log Out Button */}
