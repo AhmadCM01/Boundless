@@ -264,7 +264,7 @@ const BackgroundGrid: React.FC<{ width: number; height: number; stageX: number; 
           x={x}
           y={y}
           radius={1.2 / zoom}
-          fill="rgba(255, 255, 255, 0.12)"
+          fill={document.documentElement.getAttribute('data-theme') === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)'}
         />
       );
     }

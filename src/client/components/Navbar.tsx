@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Share2, Users, Check, Sparkles, Wifi, WifiOff } from 'lucide-react';
+import { Share2, Check, Sparkles, Wifi, WifiOff, Sun, Moon } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { roomId, username, userColor, onlineUsers, isConnected, setUsername } = useRoom();
   const [copied, setCopied] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempName, setTempName] = useState(username || '');
+
+  // Persisted Theme State
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('boundless_theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('boundless_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   const copyInviteLink = () => {
     const inviteUrl = `${window.location.origin}/room/${roomId}`;
@@ -32,7 +47,7 @@ export const Navbar: React.FC = () => {
       height: 64,
       display: 'flex',
       alignItems: 'center',
-      justify: 'space-between',
+      justifyContent: 'space-between',
       padding: '0 24px',
       zIndex: 100,
     }}>
@@ -42,11 +57,11 @@ export const Navbar: React.FC = () => {
           width: 38,
           height: 38,
           borderRadius: 10,
-          background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+          background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 0 16px rgba(99, 102, 241, 0.4)'
+          boxShadow: '0 0 16px var(--accent-glow)'
         }}>
           <Sparkles size={20} color="#fff" />
         </div>
@@ -56,9 +71,7 @@ export const Navbar: React.FC = () => {
             fontSize: 20,
             fontWeight: 700,
             letterSpacing: '-0.02em',
-            background: 'linear-gradient(90deg, #ffffff 0%, #cbd5e1 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            color: 'var(--text-heading)',
           }}>
             Boundless
           </h1>
@@ -84,11 +97,11 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Right Controls & Collaborators */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         {/* Active Collaborator Avatars */}
         <div style={{ display: 'flex', alignItems: 'center', gap: -6 }}>
           <div
-            title={`You (${username})`}
+            title={`You (${username}) — Click to rename`}
             style={{
               width: 32,
               height: 32,
@@ -100,7 +113,7 @@ export const Navbar: React.FC = () => {
               fontSize: 12,
               fontWeight: 700,
               color: '#fff',
-              border: '2px solid #0a0c10',
+              border: '2px solid var(--bg-dark)',
               cursor: 'pointer',
             }}
             onClick={() => {
@@ -126,7 +139,7 @@ export const Navbar: React.FC = () => {
                 fontSize: 12,
                 fontWeight: 700,
                 color: '#fff',
-                border: '2px solid #0a0c10',
+                border: '2px solid var(--bg-dark)',
                 marginLeft: -8,
               }}
             >
@@ -134,6 +147,22 @@ export const Navbar: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className="tool-btn"
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            border: '1px solid var(--bg-panel-border)',
+            background: 'var(--btn-hover-bg)',
+          }}
+        >
+          {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+        </button>
 
         {/* Share Button */}
         <button
@@ -154,7 +183,7 @@ export const Navbar: React.FC = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backgroundColor: 'var(--modal-backdrop)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
@@ -162,7 +191,7 @@ export const Navbar: React.FC = () => {
           zIndex: 1000,
         }}>
           <form onSubmit={handleSaveUsername} className="glass-panel" style={{ padding: 24, width: 340, borderRadius: 20 }}>
-            <h3 style={{ fontSize: 18, marginBottom: 12 }}>Change Guest Name</h3>
+            <h3 style={{ fontSize: 18, marginBottom: 12, color: 'var(--text-heading)' }}>Change Guest Name</h3>
             <input
               type="text"
               value={tempName}
@@ -173,9 +202,9 @@ export const Navbar: React.FC = () => {
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 10,
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: 'rgba(0, 0, 0, 0.4)',
-                color: '#fff',
+                border: '1px solid var(--input-border)',
+                background: 'var(--bg-input)',
+                color: 'var(--text-main)',
                 marginBottom: 16,
                 fontSize: 14,
                 outline: 'none',

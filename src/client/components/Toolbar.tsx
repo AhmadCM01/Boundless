@@ -225,7 +225,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <Hand size={18} />
       </button>
 
-      <div style={{ width: 1, height: 24, background: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
+      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px' }} />
 
       {/* Add Text */}
       <button title="Add Text" className="tool-btn" onClick={handleAddText}>
@@ -254,7 +254,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         onChange={handleImageUpload}
       />
 
-      <div style={{ width: 1, height: 24, background: 'rgba(255, 255, 255, 0.1)', margin: '0 4px' }} />
+      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px' }} />
 
       {/* 100+ Object Benchmark Button */}
       <button

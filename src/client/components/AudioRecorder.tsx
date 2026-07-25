@@ -111,7 +111,7 @@ export const AudioRecorder: React.FC<Props> = ({ stageX, stageY, zoom, onClose }
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      backgroundColor: 'var(--modal-backdrop)',
       backdropFilter: 'blur(10px)',
       display: 'flex',
       alignItems: 'center',
@@ -119,7 +119,7 @@ export const AudioRecorder: React.FC<Props> = ({ stageX, stageY, zoom, onClose }
       zIndex: 2000,
     }}>
       <div className="glass-panel animate-fade-in" style={{ width: 340, padding: 24, textAlign: 'center', borderRadius: 20 }}>
-        <h3 style={{ fontSize: 18, marginBottom: 12 }}>Record Voice Note</h3>
+        <h3 style={{ fontSize: 18, marginBottom: 12, color: 'var(--text-heading)' }}>Record Voice Note</h3>
 
         <div style={{ margin: '20px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
           {!isRecording && !audioBlob && (

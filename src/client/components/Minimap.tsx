@@ -40,12 +40,12 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
         height: MINIMAP_HEIGHT,
         borderRadius: 14,
         overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
+        border: '1px solid var(--minimap-border)',
         pointerEvents: 'none',
         zIndex: 100,
       }}
     >
-      <div style={{ position: 'relative', width: '100%', height: '100%', background: 'rgba(5, 7, 12, 0.7)' }}>
+      <div style={{ position: 'relative', width: '100%', height: '100%', background: 'var(--minimap-bg)' }}>
         {/* Render Canvas Objects as Tiny Dots */}
         {Array.from(canvasObjects.values()).map((obj) => (
           <div
@@ -57,7 +57,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
               width: 4,
               height: 4,
               borderRadius: 1,
-              backgroundColor: obj.type === 'sticky' ? '#fef08a' : obj.type === 'audio' ? '#a855f7' : '#6366f1',
+              backgroundColor: obj.type === 'sticky' ? '#eab308' : obj.type === 'audio' ? '#a855f7' : '#6366f1',
               opacity: 0.8,
             }}
           />
@@ -90,8 +90,8 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
             top: Math.max(0, Math.min(MINIMAP_HEIGHT, viewMinY)),
             width: Math.min(MINIMAP_WIDTH, viewWidth),
             height: Math.min(MINIMAP_HEIGHT, viewHeight),
-            border: '1.5px solid rgba(99, 102, 241, 0.8)',
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            border: '1.5px solid var(--accent-primary)',
+            backgroundColor: 'var(--accent-glow)',
             borderRadius: 4,
           }}
         />
