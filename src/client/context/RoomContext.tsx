@@ -98,11 +98,16 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initial connection status
     setIsConnected(wsProvider.wsconnected);
 
-    // IndexedDB offline cache setup
-    const indexedDBProvider = new IndexeddbPersistence(roomId, ydoc);
-    indexedDBProvider.on('synced', () => {
-      console.log('📦 Local IndexedDB synced for room:', roomId);
-    });
+    // IndexedDB offline cache setup safely wrapped
+    let indexedDBProvider: IndexeddbPersistence | null = null;
+    try {
+      indexedDBProvider = new IndexeddbPersistence(roomId, ydoc);
+      indexedDBProvider.on('synced', () => {
+        console.log('📦 Local IndexedDB synced for room:', roomId);
+      });
+    } catch (err) {
+      console.warn('IndexedDB offline cache unavailable:', err);
+    }
 
     const handleStatus = (event: { status: string }) => {
       setIsConnected(event.status === 'connected');
@@ -146,7 +151,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       awareness.off('change', handleAwarenessChange);
       wsProvider.off('status', handleStatus);
       wsProvider.destroy();
-      indexedDBProvider.destroy();
+      indexedDBProvider?.destroy();
     };
   }, [ydoc, roomId, yObjects]);
 

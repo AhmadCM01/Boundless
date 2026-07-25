@@ -9,6 +9,7 @@ import { Minimap } from './components/Minimap';
 import { ColorPickerBar } from './components/ColorPickerBar';
 import { ReplayModal } from './components/ReplayModal';
 import { ReactionsBar } from './components/ReactionsBar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Konva from 'konva';
 
 export const AppContent: React.FC = () => {
@@ -101,8 +102,10 @@ export const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <RoomProvider>
-      <AppContent />
-    </RoomProvider>
+    <ErrorBoundary>
+      <RoomProvider>
+        <AppContent />
+      </RoomProvider>
+    </ErrorBoundary>
   );
 }
