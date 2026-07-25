@@ -32,7 +32,9 @@ export const StickyObjectNode: React.FC<Props> = ({
     }
   }, [isSelected]);
 
-  const handleDoubleClick = () => {
+  const handleTriggerEdit = (e: Konva.KonvaEventObject<any>) => {
+    e.cancelBubble = true;
+    console.log('✏️ Double click detected on Sticky Note object:', object.id);
     setIsEditing(true);
   };
 
@@ -51,9 +53,22 @@ export const StickyObjectNode: React.FC<Props> = ({
         y={object.y}
         rotation={object.rotation}
         draggable={!isEditing}
-        onClick={onSelect}
-        onTap={onSelect}
-        onDblClick={handleDoubleClick}
+        onClick={(e) => {
+          if (e.evt.detail === 2) {
+            handleTriggerEdit(e);
+          } else {
+            onSelect();
+          }
+        }}
+        onTap={(e) => {
+          if (e.evt.detail === 2) {
+            handleTriggerEdit(e);
+          } else {
+            onSelect();
+          }
+        }}
+        onDblClick={handleTriggerEdit}
+        onDblTap={handleTriggerEdit}
         onDragEnd={(e) => {
           onChange({
             x: e.target.x(),
@@ -94,7 +109,7 @@ export const StickyObjectNode: React.FC<Props> = ({
           fontSize={11}
           fontStyle="bold"
           fontFamily="Inter"
-          fill="#64748b"
+          fill="#475569"
           align="right"
         />
       </Group>

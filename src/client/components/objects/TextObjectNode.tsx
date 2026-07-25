@@ -32,7 +32,9 @@ export const TextObjectNode: React.FC<Props> = ({
     }
   }, [isSelected]);
 
-  const handleDoubleClick = () => {
+  const handleTriggerEdit = (e: Konva.KonvaEventObject<any>) => {
+    e.cancelBubble = true;
+    console.log('✏️ Double click detected on Text object:', object.id);
     setIsEditing(true);
   };
 
@@ -50,9 +52,22 @@ export const TextObjectNode: React.FC<Props> = ({
         y={object.y}
         rotation={object.rotation}
         draggable={!isEditing}
-        onClick={onSelect}
-        onTap={onSelect}
-        onDblClick={handleDoubleClick}
+        onClick={(e) => {
+          if (e.evt.detail === 2) {
+            handleTriggerEdit(e);
+          } else {
+            onSelect();
+          }
+        }}
+        onTap={(e) => {
+          if (e.evt.detail === 2) {
+            handleTriggerEdit(e);
+          } else {
+            onSelect();
+          }
+        }}
+        onDblClick={handleTriggerEdit}
+        onDblTap={handleTriggerEdit}
         onDragEnd={(e) => {
           onChange({
             x: e.target.x(),
@@ -65,7 +80,7 @@ export const TextObjectNode: React.FC<Props> = ({
           text={object.text}
           fontSize={object.fontSize || 20}
           fontFamily={object.fontFamily || 'Inter'}
-          fill={object.fill || '#f3f4f6'}
+          fill={object.fill || '#e5e7eb'}
           width={object.width}
           wrap="word"
           opacity={isEditing ? 0.3 : 1}
@@ -89,6 +104,7 @@ export const TextObjectNode: React.FC<Props> = ({
       {isSelected && !isEditing && (
         <Transformer
           ref={trRef}
+          shouldOverdrawWholeArea={true}
           boundBoxFunc={(oldBox, newBox) => {
             if (newBox.width < 50) return oldBox;
             return newBox;

@@ -82,7 +82,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const yObjects = useMemo(() => ydoc.getMap<CanvasObject>('objects'), [ydoc]);
 
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const [canvasObjects, setCanvasObjects] = useState<Map<string, CanvasObject>>(new Map());
   const [onlineUsers, setOnlineUsers] = useState<UserAwareness[]>([]);
 
@@ -95,28 +95,42 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const wsProvider = new WebsocketProvider(wsUrl, roomId, ydoc);
     setProvider(wsProvider);
 
-    // Initial connection status
-    setIsConnected(wsProvider.wsconnected);
-
     // IndexedDB offline cache setup safely wrapped
     let indexedDBProvider: IndexeddbPersistence | null = null;
     try {
       indexedDBProvider = new IndexeddbPersistence(roomId, ydoc);
-      indexedDBProvider.on('synced', () => {
-        console.log('📦 Local IndexedDB synced for room:', roomId);
-      });
     } catch (err) {
       console.warn('IndexedDB offline cache unavailable:', err);
     }
 
-    const handleStatus = (event: { status: string }) => {
-      setIsConnected(event.status === 'connected');
+    // Continuous Connection State Tracker
+    const checkConnection = () => {
+      setIsConnected(wsProvider.wsconnected);
     };
 
-    wsProvider.on('status', handleStatus);
+    checkConnection();
+
+    wsProvider.on('status', (event: { status: string }) => {
+      setIsConnected(event.status === 'connected' || wsProvider.wsconnected);
+    });
+
     wsProvider.on('sync', (isSynced: boolean) => {
       if (isSynced) setIsConnected(true);
     });
+
+    // Heartbeat check every 2 seconds to prevent idle/tab-switch false negatives
+    const heartbeatTimer = setInterval(checkConnection, 2000);
+
+    // Re-verify connection when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (!wsProvider.wsconnected) {
+          wsProvider.connect();
+        }
+        checkConnection();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Observer for Objects Y.Map changes
     const handleObjectsChange = () => {
@@ -147,9 +161,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     awareness.on('change', handleAwarenessChange);
 
     return () => {
+      clearInterval(heartbeatTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       yObjects.unobserve(handleObjectsChange);
       awareness.off('change', handleAwarenessChange);
-      wsProvider.off('status', handleStatus);
       wsProvider.destroy();
       indexedDBProvider?.destroy();
     };

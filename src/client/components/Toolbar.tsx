@@ -65,7 +65,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       text: 'Double click to edit text...',
       fontSize: 20,
       fontFamily: 'Inter',
-      fill: '#1e293b',
+      fill: '#e5e7eb',
       createdBy: username || 'Guest',
       createdAt: Date.now(),
       updatedAt: Date.now(),

@@ -12,6 +12,8 @@
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
   --text-heading: #ffffff;
+  --canvas-text-muted: #a1a1aa;
+  --canvas-text-fill: #e5e7eb;
   --btn-hover-bg: rgba(255, 255, 255, 0.08);
   --grid-dot: rgba(255, 255, 255, 0.15);
   --minimap-bg: rgba(12, 14, 22, 0.85);
