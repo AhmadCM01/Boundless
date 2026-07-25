@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Sparkles, User, ArrowRight, History, DoorOpen, Edit3 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
+import { User, ArrowRight, History, DoorOpen, Edit3 } from 'lucide-react';
 
 interface RecentRoom {
   id: string;
@@ -73,18 +74,20 @@ export const GuestModal: React.FC = () => {
         textAlign: 'center',
         maxWidth: '90vw',
       }}>
+        {/* Prominent 4-Color Infinite Loop Brand Logo */}
         <div style={{
-          width: 56,
-          height: 56,
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a855f7 100%)',
+          width: 72,
+          height: 72,
+          borderRadius: 20,
+          background: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid var(--bg-panel-border)',
           margin: '0 auto 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 0 24px var(--accent-glow)'
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
         }}>
-          <Sparkles size={28} color="#fff" />
+          <BrandLogo size={56} />
         </div>
 
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, marginBottom: 6, color: 'var(--text-heading)' }}>

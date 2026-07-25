@@ -5,7 +5,9 @@ import { Trash2, ArrowUp, ArrowDown, Edit3 } from 'lucide-react';
 interface Props {
   selectedId: string | null;
   onDeselect: () => void;
-  onOpenEditText?: () => void;
+  stageX: number;
+  stageY: number;
+  zoom: number;
 }
 
 const COLOR_SWATCHES = [
@@ -29,7 +31,13 @@ const COLOR_SWATCHES = [
   { name: 'White', value: '#f8fafc' },
 ];
 
-export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
+export const ColorPickerBar: React.FC<Props> = ({
+  selectedId,
+  onDeselect,
+  stageX,
+  stageY,
+  zoom,
+}) => {
   const { canvasObjects, updateObject, deleteObject } = useRoom();
 
   if (!selectedId) return null;
@@ -53,7 +61,6 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
   };
 
   const handleTriggerEdit = () => {
-    // Broadcast trigger event to active node
     const event = new CustomEvent('boundless-trigger-text-edit', { detail: { id: selectedId } });
     window.dispatchEvent(event);
   };
@@ -75,21 +82,34 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
     onDeselect();
   };
 
+  // Calculate object's screen position so toolbar floats directly 14px above bounding box
+  const objW = activeObj.width || 120;
+  const centerWorldX = activeObj.x + objW / 2;
+  const topWorldY = activeObj.y;
+
+  const rawScreenX = centerWorldX * zoom + stageX;
+  const rawScreenY = topWorldY * zoom + stageY - 14;
+
+  // Clamped position to keep toolbar visible within screen boundaries
+  const screenX = Math.max(160, Math.min(window.innerWidth - 160, rawScreenX));
+  const screenY = Math.max(85, Math.min(window.innerHeight - 60, rawScreenY));
+
   return (
     <div
       className="glass-panel animate-fade-in"
       style={{
         position: 'absolute',
-        top: 88,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        padding: '8px 16px',
+        left: screenX,
+        top: screenY,
+        transform: 'translate(-50%, -100%)',
+        padding: '6px 14px',
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
         maxWidth: '92vw',
         overflowX: 'auto',
-        zIndex: 100,
+        zIndex: 200,
+        boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
       }}
     >
       {/* Edit Text Button for Text and Sticky Objects */}
@@ -99,19 +119,20 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
             onClick={handleTriggerEdit}
             className="btn-primary"
             style={{
-              padding: '6px 14px',
-              fontSize: 13,
+              padding: '5px 12px',
+              fontSize: 12,
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 5,
               whiteSpace: 'nowrap',
               flexShrink: 0,
+              height: 28,
             }}
           >
-            <Edit3 size={15} />
+            <Edit3 size={14} />
             <span>Edit Text</span>
           </button>
-          <div style={{ width: 1, height: 20, background: 'var(--bg-panel-border)', margin: '0 2px', flexShrink: 0 }} />
+          <div style={{ width: 1, height: 18, background: 'var(--bg-panel-border)', margin: '0 2px', flexShrink: 0 }} />
         </>
       )}
 
@@ -120,7 +141,7 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
       </span>
 
       {/* Swatch Palette */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         {COLOR_SWATCHES.map((swatch) => {
           const isSelected = currentColor === swatch.value;
           return (
@@ -129,13 +150,13 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
               title={swatch.name}
               onClick={() => handleSelectColor(swatch.value)}
               style={{
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 borderRadius: '50%',
                 backgroundColor: swatch.value,
                 border: isSelected ? '2px solid var(--text-heading)' : '1px solid rgba(0, 0, 0, 0.2)',
-                transform: isSelected ? 'scale(1.25)' : 'scale(1)',
-                boxShadow: isSelected ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
+                transform: isSelected ? 'scale(1.2)' : 'scale(1)',
+                boxShadow: isSelected ? '0 0 6px rgba(0,0,0,0.3)' : 'none',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 flexShrink: 0,
@@ -149,8 +170,8 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
           title="Custom Hex Color Picker"
           style={{
             position: 'relative',
-            width: 24,
-            height: 24,
+            width: 20,
+            height: 20,
             borderRadius: '50%',
             background: 'conic-gradient(from 0deg, red, yellow, green, cyan, blue, magenta, red)',
             cursor: 'pointer',
@@ -177,29 +198,29 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
         </label>
       </div>
 
-      <div style={{ width: 1, height: 20, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
+      <div style={{ width: 1, height: 18, background: 'var(--bg-panel-border)', margin: '0 2px', flexShrink: 0 }} />
 
       {/* Layering Z-Index Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
         <button
           title="Bring to Front"
           onClick={handleBringToFront}
           className="tool-btn"
-          style={{ width: 28, height: 28 }}
+          style={{ width: 26, height: 26 }}
         >
-          <ArrowUp size={14} />
+          <ArrowUp size={13} />
         </button>
         <button
           title="Send to Back"
           onClick={handleSendToBack}
           className="tool-btn"
-          style={{ width: 28, height: 28 }}
+          style={{ width: 26, height: 26 }}
         >
-          <ArrowDown size={14} />
+          <ArrowDown size={13} />
         </button>
       </div>
 
-      <div style={{ width: 1, height: 20, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
+      <div style={{ width: 1, height: 18, background: 'var(--bg-panel-border)', margin: '0 2px', flexShrink: 0 }} />
 
       {/* Delete Selected Object Button */}
       <button
@@ -210,17 +231,17 @@ export const ColorPickerBar: React.FC<Props> = ({ selectedId, onDeselect }) => {
           color: '#ef4444',
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
+          gap: 4,
+          fontSize: 12,
           fontWeight: 500,
-          padding: '4px 8px',
-          borderRadius: 8,
+          padding: '3px 6px',
+          borderRadius: 6,
           whiteSpace: 'nowrap',
           flexShrink: 0,
           cursor: 'pointer',
         }}
       >
-        <Trash2 size={16} />
+        <Trash2 size={15} />
         <span>Delete</span>
       </button>
     </div>

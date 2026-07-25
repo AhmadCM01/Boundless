@@ -22,15 +22,17 @@ export const TextObjectNode: React.FC<Props> = ({
   const textRef = useRef<Konva.Text>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const mountTimeRef = useRef<number>(0);
 
   useEffect(() => {
     setTextValue(object.text);
   }, [object.text]);
 
-  // Listen for custom trigger edit event from property bar or keyboard
+  // Listen for custom trigger edit event from property bar or keyboard shortcut
   useEffect(() => {
     const handleCustomTrigger = (e: any) => {
       if (e.detail && e.detail.id === object.id) {
+        mountTimeRef.current = Date.now();
         setIsEditing(true);
       }
     };
@@ -59,6 +61,7 @@ export const TextObjectNode: React.FC<Props> = ({
   }, [isSelected]);
 
   const handleTriggerEdit = () => {
+    mountTimeRef.current = Date.now();
     setIsEditing(true);
   };
 
@@ -67,6 +70,14 @@ export const TextObjectNode: React.FC<Props> = ({
     if (textValue.trim() !== object.text) {
       onChange({ text: textValue.trim() || 'Text' });
     }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    // Prevent double-click tail click from closing modal immediately upon mounting
+    if (Date.now() - mountTimeRef.current < 300) {
+      return;
+    }
+    handleSave();
   };
 
   return (
@@ -78,19 +89,11 @@ export const TextObjectNode: React.FC<Props> = ({
         draggable={!isEditing}
         onClick={(e) => {
           e.cancelBubble = true;
-          if (isSelected) {
-            handleTriggerEdit();
-          } else {
-            onSelect();
-          }
+          onSelect();
         }}
         onTap={(e) => {
           e.cancelBubble = true;
-          if (isSelected) {
-            handleTriggerEdit();
-          } else {
-            onSelect();
-          }
+          onSelect();
         }}
         onDblClick={(e) => {
           e.cancelBubble = true;
@@ -139,7 +142,7 @@ export const TextObjectNode: React.FC<Props> = ({
           shouldOverdrawWholeArea={true}
           onClick={(e) => {
             e.cancelBubble = true;
-            handleTriggerEdit();
+            onSelect();
           }}
           onDblClick={(e) => {
             e.cancelBubble = true;
@@ -168,7 +171,7 @@ export const TextObjectNode: React.FC<Props> = ({
             justifyContent: 'center',
             zIndex: 99999,
           }}
-          onClick={handleSave}
+          onClick={handleBackdropClick}
         >
           <div
             className="glass-panel animate-fade-in"
@@ -188,6 +191,9 @@ export const TextObjectNode: React.FC<Props> = ({
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSave();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setIsEditing(false);
                 }
               }}
               onKeyUp={(e) => e.stopPropagation()}

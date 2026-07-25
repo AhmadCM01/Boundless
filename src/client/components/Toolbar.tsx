@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
   Mic,
   Zap,
+  MoreHorizontal,
 } from 'lucide-react';
 
 export type ToolMode = 'select' | 'pan' | 'text' | 'shape' | 'sticky' | 'image' | 'audio';
@@ -39,6 +40,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const { addObject, canvasObjects, username } = useRoom();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isShapeFlyoutOpen, setIsShapeFlyoutOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
 
   // Get world coordinate center of screen for creating new objects
   const getCenterCanvasPos = () => {
@@ -195,6 +197,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       };
       addObject(newShape);
     }
+    setIsOverflowOpen(false);
   };
 
   return (
@@ -243,7 +246,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           title="Shapes Menu"
           className={`tool-btn ${isShapeFlyoutOpen ? 'active' : ''}`}
-          onClick={() => setIsShapeFlyoutOpen(!isShapeFlyoutOpen)}
+          onClick={() => {
+            setIsShapeFlyoutOpen(!isShapeFlyoutOpen);
+            setIsOverflowOpen(false);
+          }}
         >
           <Square size={18} />
         </button>
@@ -340,15 +346,53 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px' }} />
 
-      {/* 100+ Object Benchmark Button */}
-      <button
-        title="Spawn 100 Random Objects (Viewport Culling Test)"
-        className="tool-btn"
-        onClick={handleSpawn100Objects}
-        style={{ color: '#f59e0b' }}
-      >
-        <Zap size={18} />
-      </button>
+      {/* Secondary Overflow Options Menu (...) */}
+      <div style={{ position: 'relative' }}>
+        <button
+          title="More Options"
+          className={`tool-btn ${isOverflowOpen ? 'active' : ''}`}
+          onClick={() => {
+            setIsOverflowOpen(!isOverflowOpen);
+            setIsShapeFlyoutOpen(false);
+          }}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+
+        {isOverflowOpen && (
+          <div
+            className="glass-panel animate-fade-in"
+            style={{
+              position: 'absolute',
+              bottom: 64,
+              right: 0,
+              padding: 8,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              minWidth: 190,
+              zIndex: 200,
+            }}
+          >
+            <button
+              onClick={handleSpawn100Objects}
+              className="tool-btn"
+              style={{
+                width: '100%',
+                height: 36,
+                justify: 'flex-start',
+                padding: '0 12px',
+                gap: 10,
+                fontSize: 13,
+                color: '#f59e0b',
+              }}
+            >
+              <Zap size={16} color="#f59e0b" />
+              <span>Spawn 100 Objects</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

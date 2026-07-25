@@ -43,6 +43,9 @@ export const AppContent: React.FC = () => {
       <ColorPickerBar
         selectedId={selectedId}
         onDeselect={() => setSelectedId(null)}
+        stageX={stageX}
+        stageY={stageY}
+        zoom={zoom}
       />
 
       <Canvas

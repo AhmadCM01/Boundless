@@ -25,7 +25,6 @@ export const ReactionsBar: React.FC<{ stageX: number; stageY: number; zoom: numb
         timestamp: Date.now(),
       },
     });
-    console.log('🎉 Reaction sent:', emoji);
   };
 
   return (
@@ -35,7 +34,8 @@ export const ReactionsBar: React.FC<{ stageX: number; stageY: number; zoom: numb
         position: 'absolute',
         bottom: 24,
         left: 24,
-        padding: '4px 10px',
+        height: 56,
+        padding: '0 12px',
         display: 'flex',
         alignItems: 'center',
         gap: 6,
@@ -48,7 +48,7 @@ export const ReactionsBar: React.FC<{ stageX: number; stageY: number; zoom: numb
           title={`Send ${emoji} reaction`}
           onClick={() => sendReaction(emoji)}
           className="tool-btn"
-          style={{ width: 32, height: 32, fontSize: 16 }}
+          style={{ width: 40, height: 40, fontSize: 18 }}
         >
           {emoji}
         </button>
