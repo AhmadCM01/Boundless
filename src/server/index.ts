@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // @ts-ignore y-websocket bin utils TS module setup
-import { setupWSConnection } from 'y-websocket/bin/utils';
+import { setupWSConnection, getYDoc } from 'y-websocket/bin/utils';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +40,13 @@ interface StoredAsset {
   createdAt: number;
 }
 const assetsMap = new Map<string, StoredAsset>();
+
+// In-Memory Yjs Room Update History Storage for Session Replay
+interface DeltaRecord {
+  timestamp: number;
+  deltaBase64: string;
+}
+const roomHistoryMap = new Map<string, DeltaRecord[]>();
 
 // Asset Upload Endpoint
 fastify.post('/api/assets', async (request, reply) => {
@@ -80,6 +87,17 @@ fastify.get('/api/assets/:id', async (request, reply) => {
   return reply.send(asset.data);
 });
 
+// Room Update History Endpoint for Session Replay
+fastify.get('/api/rooms/:id/history', async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const history = roomHistoryMap.get(id) || [];
+  return reply.send({
+    roomId: id,
+    count: history.length,
+    updates: history,
+  });
+});
+
 // Serve Static Frontend Bundle in production
 const clientDistPath = path.resolve(__dirname, '../client');
 
@@ -108,6 +126,27 @@ wss.on('connection', (conn, req) => {
   const room = urlObj.searchParams.get('room') || url.replace('/yjs', '').replace('/', '') || 'default-room';
 
   setupWSConnection(conn, req, { docName: room });
+
+  // Attach Y.Doc update listener for session replay history tracking
+  try {
+    const doc = getYDoc(room);
+    if (doc && !doc._historySubscribed) {
+      doc._historySubscribed = true;
+      doc.on('update', (update: Uint8Array) => {
+        let history = roomHistoryMap.get(room);
+        if (!history) {
+          history = [];
+          roomHistoryMap.set(room, history);
+        }
+        history.push({
+          timestamp: Date.now(),
+          deltaBase64: Buffer.from(update).toString('base64'),
+        });
+      });
+    }
+  } catch (e) {
+    console.error('History tracking error:', e);
+  }
 });
 
 // Intercept HTTP upgrade for WebSockets on /yjs

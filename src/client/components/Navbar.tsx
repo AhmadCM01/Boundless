@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
 import { BrandLogo } from './BrandLogo';
-import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut } from 'lucide-react';
+import { ExportMenu } from './ExportMenu';
+import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut, History, Eye } from 'lucide-react';
+import Konva from 'konva';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  stageRef: React.RefObject<Konva.Stage | null>;
+  onOpenReplay: () => void;
+  followingUserId: string | null;
+  setFollowingUserId: (id: string | null) => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  stageRef,
+  onOpenReplay,
+  followingUserId,
+  setFollowingUserId,
+}) => {
   const { roomId, username, userColor, onlineUsers, isConnected, setUsername, logout } = useRoom();
   const [copied, setCopied] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
@@ -40,58 +54,79 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="glass-panel" style={{
-      position: 'absolute',
-      top: 16,
-      left: 16,
-      right: 16,
-      height: 64,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 24px',
-      zIndex: 100,
-    }}>
-      {/* Brand Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <BrandLogo size={36} />
-        <div>
-          <h1 style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: 20,
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
-            color: 'var(--text-heading)',
-          }}>
+    <header
+      className="glass-panel"
+      style={{
+        position: 'absolute',
+        top: 16,
+        left: 24,
+        right: 24,
+        height: 64,
+        padding: '0 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 100,
+      }}
+    >
+      {/* Brand & Room Info */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <BrandLogo size={28} />
+          <span style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-heading)' }}>
             Boundless
-          </h1>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Room: {roomId}</span>
-          </div>
+          </span>
+        </div>
+
+        <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)' }} />
+
+        {/* Room Name Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Room:</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'monospace' }}>
+            {roomId}
+          </span>
+        </div>
+
+        {/* Sync Status Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 10px', borderRadius: 20 }} className="glass-pill">
+          {isConnected ? (
+            <>
+              <Wifi size={14} color="#10b981" />
+              <span style={{ color: '#10b981', fontWeight: 600 }}>Live Sync</span>
+            </>
+          ) : (
+            <>
+              <WifiOff size={14} color="#ef4444" />
+              <span style={{ color: '#ef4444', fontWeight: 600 }}>Offline / Reconnecting</span>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Center Status Pill */}
-      <div className="glass-pill" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-        {isConnected ? (
-          <>
-            <Wifi size={14} color="#10b981" />
-            <span style={{ color: '#10b981', fontWeight: 500 }}>Live Sync</span>
-          </>
-        ) : (
-          <>
-            <WifiOff size={14} color="#ef4444" />
-            <span style={{ color: '#ef4444', fontWeight: 500 }}>Offline / Reconnecting</span>
-          </>
+      {/* Right Controls: Online Collaborators, Export, Replay, Theme & Logout */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Following User Badge */}
+        {followingUserId && (
+          <button
+            onClick={() => setFollowingUserId(null)}
+            className="btn-primary"
+            style={{ padding: '6px 12px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Eye size={14} />
+            <span>Following User (Click to Stop)</span>
+          </button>
         )}
-      </div>
 
-      {/* Right Controls & Collaborators */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* Active Collaborator Avatars */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: -6 }}>
+        {/* Online Collaborator Avatars */}
+        <div style={{ display: 'flex', alignItems: 'center', marginRight: 6 }}>
+          {/* Current User */}
           <div
-            title={`You (${username}) — Click to rename`}
+            title={`You: ${username || 'Guest'} (Click to edit)`}
+            onClick={() => {
+              setTempName(username || '');
+              setIsEditingUsername(true);
+            }}
             style={{
               width: 32,
               height: 32,
@@ -105,19 +140,18 @@ export const Navbar: React.FC = () => {
               color: '#fff',
               border: '2px solid var(--bg-dark)',
               cursor: 'pointer',
-            }}
-            onClick={() => {
-              setTempName(username || '');
-              setIsEditingUsername(true);
+              boxShadow: '0 0 8px rgba(0,0,0,0.3)',
             }}
           >
-            {username ? username.substring(0, 2).toUpperCase() : '?'}
+            {username ? username.substring(0, 2).toUpperCase() : 'ME'}
           </div>
 
+          {/* Remote Collaborators */}
           {onlineUsers.map((user, idx) => (
             <div
               key={user.userId || idx}
-              title={user.username}
+              title={`Click to Follow ${user.username || 'Collaborator'}`}
+              onClick={() => setFollowingUserId(user.userId || null)}
               style={{
                 width: 32,
                 height: 32,
@@ -131,12 +165,32 @@ export const Navbar: React.FC = () => {
                 color: '#fff',
                 border: '2px solid var(--bg-dark)',
                 marginLeft: -8,
+                cursor: 'pointer',
               }}
             >
               {user.username ? user.username.substring(0, 2).toUpperCase() : 'G'}
             </div>
           ))}
         </div>
+
+        {/* Export Menu */}
+        <ExportMenu stageRef={stageRef} />
+
+        {/* Session Replay Button */}
+        <button
+          onClick={onOpenReplay}
+          className="tool-btn"
+          title="Session Replay & Time Travel"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            border: '1px solid var(--bg-panel-border)',
+            background: 'var(--btn-hover-bg)',
+          }}
+        >
+          <History size={18} />
+        </button>
 
         {/* Theme Toggle Button */}
         <button
@@ -184,49 +238,54 @@ export const Navbar: React.FC = () => {
 
       {/* Edit Username Modal Overlay */}
       {isEditingUsername && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'var(--modal-backdrop)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <form onSubmit={handleSaveUsername} className="glass-panel" style={{ padding: 24, width: 340, borderRadius: 20 }}>
-            <h3 style={{ fontSize: 18, marginBottom: 12, color: 'var(--text-heading)' }}>Change Guest Name</h3>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'var(--modal-backdrop)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+        >
+          <form
+            onSubmit={handleSaveUsername}
+            className="glass-panel animate-fade-in"
+            style={{ width: 340, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <h3 style={{ fontSize: 18, color: 'var(--text-heading)' }}>Edit Display Name</h3>
             <input
               type="text"
               value={tempName}
               onChange={(e) => setTempName(e.target.value)}
-              placeholder="Enter username..."
+              placeholder="Enter your name..."
               autoFocus
               style={{
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 10,
-                border: '1px solid var(--input-border)',
                 background: 'var(--bg-input)',
+                border: '1px solid var(--input-border)',
                 color: 'var(--text-main)',
-                marginBottom: 16,
                 fontSize: 14,
                 outline: 'none',
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setIsEditingUsername(false)}
-                style={{ padding: '8px 16px', background: 'transparent', color: 'var(--text-muted)', fontSize: 13 }}
+                className="tool-btn"
+                style={{ padding: '8px 16px', width: 'auto', height: 'auto', fontSize: 13 }}
               >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary" style={{ fontSize: 13, padding: '8px 16px' }}>
-                Save
+              <button type="submit" className="btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+                Save Name
               </button>
             </div>
           </form>

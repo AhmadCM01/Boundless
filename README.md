@@ -1,89 +1,65 @@
-# Boundless — Real-Time Collaborative Infinite Canvas
+# Boundless — Real-Time Collaborative Infinite Canvas 🚀
 
-**Boundless** is a high-performance, real-time collaborative 2D infinite canvas platform built for creative minds. Powered by Yjs CRDT conflict-free replication and Konva.js rendering engine, multiple users can join rooms instantly via shareable links, customize guest identities, and collaborate live on multi-media canvas objects.
+**Live Production URL:** [https://boundless-4zml.onrender.com](https://boundless-4zml.onrender.com)  
+**GitHub Repository:** [https://github.com/AhmadCM01/Boundless](https://github.com/AhmadCM01/Boundless)
 
 ---
 
-## 🚀 Key Features
+## 🌟 Overview
+**Boundless** is a high-performance, real-time collaborative 2D infinite canvas application built for creative teams. Multiple users can join a room via link or code, interact live with vector shapes, sticky notes, formatted text, uploaded images, and proximity-aware voice notes, and enjoy client-authoritative physics interactions and time travel session replays.
 
-1. **Instant Room & Guest Onboarding**: Link-based room sessions (`/room/:roomId`) with lightweight guest authentication and cursor styling.
-2. **Real-Time CRDT Synchronization**: Zero-conflict live editing using **Yjs** (`Y.Doc`, `Y.Map`) and `y-websocket`, paired with Yjs **Awareness** protocol for live collaborator presence and cursor tracking.
-3. **Infinite Canvas Engine**: Smooth camera pan and zoom anchored at cursor coordinates, powered by **Konva.js** (`react-konva`).
-4. **Viewport Culling Performance**: Standard bounding box intersection culling ensures fluid 60 FPS performance with **100+ active objects**.
-5. **Multi-Media Object Suite**:
-   - **Text Blocks**: Editable text elements with custom font styling.
-   - **Shapes**: Vector Rectangles, Circles, Stars, and Triangles.
-   - **Sticky Notes**: Color-coded notes with author tags and auto-wrapping text.
-   - **Images**: Fast image asset upload via HTTP reference endpoints.
-   - **Audio Recordings**: Browser `MediaRecorder` audio notes with interactive HTML `<audio>` playback cards.
-6. **Radar / Mini-Map**: Bottom-right radar tracking room objects, live collaborators' viewports, and cursor activity.
-7. **Offline Support**: Local CRDT delta caching via `y-indexeddb` for offline updates and auto-reconnection resync.
+---
+
+## ⚡ Core Features & Status Matrix
+
+| Feature Subsystem | Status | Technical Implementation |
+| :--- | :---: | :--- |
+| **Real-Time CRDT Sync** | ✅ PASS | Yjs `Y.Doc` over WebSockets (`y-websocket`) for conflict-free state merge |
+| **Viewport Culling** | ✅ PASS | Bounding box spatial culling rendering 100+ loaded objects at 60 FPS |
+| **6 Canvas Object Types** | ✅ PASS | Text, Shapes (Rect, Circle, Star, Triangle, Line, Arrow), Images, Sticky Notes, Voice Notes |
+| **Spatial Proximity Audio** | ✅ PASS | Web Audio API `GainNode` scaling volume smoothly between $300\text{px}$ and $1500\text{px}$ |
+| **Theme-Independent Colors** | ✅ PASS | 18 curated swatches + native hex color picker, 100% decoupled from UI chrome themes |
+| **Mini-map Radar** | ✅ PASS | Live bi-directional rendering of online collaborators' viewports & cursor presence |
+| **Offline Resilience** | ✅ PASS | `y-indexeddb` local mutation caching & zero-duplicate resync on network return |
+| **Multi-Format Export** | ✅ PASS | High-resolution PNG image, vector SVG, and raw JSON document exports |
+| **Session Time Travel** | ✅ PASS | Timestamped binary update delta history capture & interactive scrubber replay |
+| **Client-Authoritative Physics**| ✅ PASS | Flick/throw momentum, spatial hash collisions ($O(n)$ grid), and mobile FPS cap |
+| **Reactions & Follow Mode** | ✅ PASS | Floating live emoji particles & camera view locking to collaborator viewports |
+| **Guest Logout** | ✅ PASS | Clean session clearance returning to onboarding without room disruption |
 
 ---
 
 ## 🛠️ Technology Stack
-
-- **Sync Engine**: Yjs (`yjs`), `y-websocket`, `y-indexeddb`
-- **Canvas Rendering**: Konva.js (`react-konva`, `konva`)
-- **Frontend**: React 19, TypeScript, Vite, Lucide Icons, Vanilla Glassmorphism CSS
-- **Backend**: Fastify, `@fastify/static`, `@fastify/multipart`, `ws`
-- **Deployment**: Render (Single-service Web Service serving static React client and WebSocket upgrades on a single port).
+- **Frontend**: React 18, Vite, TypeScript, Konva.js (`react-konva`), Lucide Icons.
+- **Real-Time Sync**: Yjs (`yjs`), `y-websocket`, `y-indexeddb`.
+- **Backend**: Node.js, TypeScript, Fastify, `ws` (WebSocket Server).
+- **Deployment**: Render Web Service (Single-service Node environment).
 
 ---
 
-## 📦 Local Development
+## 🚀 Running Locally
 
-### 1. Installation
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### 2. Start Local Development Server
-Runs Fastify server on `localhost:3000` and Vite dev server on `localhost:5173`:
-```bash
+# 2. Start local development server (Client Vite + Server Fastify)
 npm run dev
-```
 
-Open `http://localhost:5173` in your browser.
-
-### 3. Production Build & Local Start
-```bash
-npm run build
-npm start
+# 3. Open browser
+http://localhost:5173
 ```
 
 ---
 
-## 🌐 Render Deployment
+## 🌐 Deploying to Render
 
-Boundless is configured for single-service Web Service deployment on **Render**:
-
-1. Log into your [Render Dashboard](https://dashboard.render.com).
-2. Click **New +** $\rightarrow$ **Web Service**.
-3. Connect your GitHub repository (`AhmadCM01/Boundless`).
-4. Configure the service settings:
-   - **Environment**: `Node`
-   - **Region**: Any preferred region
-   - **Branch**: `main`
+1. Create a new **Web Service** on [Render](https://render.com).
+2. Connect your GitHub repository (`https://github.com/AhmadCM01/Boundless`).
+3. Set configuration:
+   - **Environment**: Node
    - **Build Command**: `npm run build`
    - **Start Command**: `npm start`
-   - **Instance Type**: `Free`
-5. Click **Create Web Service**. Render automatically detects `process.env.PORT` and serves both the static frontend and WebSocket `/yjs` connection on a single port.
+4. Deploy! Live URL format: `https://<service-name>.onrender.com`.
 
-**Live Render Demo URL**: [https://boundless-4zml.onrender.com](https://boundless-4zml.onrender.com)
-
-> [!IMPORTANT]
-> **Render Free-Tier Cold Starts**:
-> Render's free tier automatically puts the Web Service to sleep after 15 minutes of inactivity. When woken up by a new request, the initial cold start takes approximately **30–60 seconds**. For live demos or judging sessions, open the live URL a few minutes in advance to spin up the instance and ensure a zero-delay experience!
-
----
-
-## 🎯 Stretch Goals & Design Decisions
-
-- **Attempted & Completed**:
-  - **Mini-Map / Radar**: Built using Yjs Awareness presence data to show online collaborators' positions and active canvas object distributions.
-  - **Offline Resilience**: Integrated `y-indexeddb` provider to store Yjs deltas locally in IndexedDB and resync on network reconnect.
-  - **Media Asset Optimization**: Image and Audio bytes are served via dedicated `/api/assets/:id` HTTP endpoints backed by server memory storage, keeping the Yjs document ultra-small and sync times fast.
-- **Skipped / Deferred**:
-  - **Physics Engine (Matter.js)**: Skipped to prioritize rock-solid MVP collaboration, smooth viewport culling performance, and 100+ object stability.
-  - **Live Waveform Visualization**: Skipped per MVP simplification to focus on robust audio recording and native HTML audio playback cards.
+> **Note on Render Free Tier**: Render free instance sleeps after 15 minutes of inactivity. First request takes 30-60s to wake up. Open the URL a few minutes before demoing to keep it warm.

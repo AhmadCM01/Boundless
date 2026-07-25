@@ -1,0 +1,156 @@
+import React, { useState } from 'react';
+import { useRoom } from '../context/RoomContext';
+import { Download, FileImage, FileCode, FileText } from 'lucide-react';
+import Konva from 'konva';
+
+interface Props {
+  stageRef: React.RefObject<Konva.Stage | null>;
+}
+
+export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
+  const { canvasObjects, roomId } = useRoom();
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Export 1: High-res PNG Image
+  const exportPNG = () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+    const link = document.createElement('a');
+    link.download = `boundless_${roomId}_${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+    setIsOpen(false);
+  };
+
+  // Export 2: SVG Vector Format
+  const exportSVG = () => {
+    const objects = Array.from(canvasObjects.values());
+    const minX = Math.min(...objects.map((o) => o.x), 0) - 100;
+    const minY = Math.min(...objects.map((o) => o.y), 0) - 100;
+    const maxX = Math.max(...objects.map((o) => o.x + (o.width || 100)), 1200) + 100;
+    const maxY = Math.max(...objects.map((o) => o.y + (o.height || 100)), 800) + 100;
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}" style="background-color: #121318;">\n`;
+
+    objects.forEach((obj) => {
+      if (obj.type === 'shape') {
+        const fill = (obj as any).fill || '#6366f1';
+        const stroke = (obj as any).stroke || fill;
+        if ((obj as any).shapeType === 'circle') {
+          const r = Math.min(obj.width, obj.height) / 2;
+          svgContent += `  <circle cx="${obj.x + r}" cy="${obj.y + r}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2" />\n`;
+        } else {
+          svgContent += `  <rect x="${obj.x}" y="${obj.y}" width="${obj.width}" height="${obj.height}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="2" />\n`;
+        }
+      } else if (obj.type === 'sticky') {
+        const color = (obj as any).color || '#fef08a';
+        const text = (obj as any).text || '';
+        svgContent += `  <rect x="${obj.x}" y="${obj.y}" width="${obj.width}" height="${obj.height}" rx="6" fill="${color}" />\n`;
+        svgContent += `  <text x="${obj.x + 14}" y="${obj.y + 30}" font-family="sans-serif" font-size="14" fill="#1e293b">${text}</text>\n`;
+      } else if (obj.type === 'text') {
+        const fill = (obj as any).fill || '#f3f4f6';
+        const text = (obj as any).text || '';
+        svgContent += `  <text x="${obj.x}" y="${obj.y + 24}" font-family="sans-serif" font-size="${(obj as any).fontSize || 20}" fill="${fill}">${text}</text>\n`;
+      }
+    });
+
+    svgContent += `</svg>`;
+
+    const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `boundless_${roomId}_${Date.now()}.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    setIsOpen(false);
+  };
+
+  // Export 3: JSON Raw Canvas Objects Data
+  const exportJSON = () => {
+    const objectsArray = Array.from(canvasObjects.values());
+    const jsonString = JSON.stringify(
+      {
+        roomId,
+        exportedAt: new Date().toISOString(),
+        objectCount: objectsArray.length,
+        objects: objectsArray,
+      },
+      null,
+      2
+    );
+
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `boundless_${roomId}_${Date.now()}.json`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    setIsOpen(false);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="tool-btn"
+        title="Export Canvas (PNG, SVG, JSON)"
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          border: '1px solid var(--bg-panel-border)',
+          background: 'var(--btn-hover-bg)',
+        }}
+      >
+        <Download size={18} />
+      </button>
+
+      {isOpen && (
+        <div
+          className="glass-panel animate-fade-in"
+          style={{
+            position: 'absolute',
+            top: 50,
+            right: 0,
+            width: 170,
+            padding: 6,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            zIndex: 300,
+          }}
+        >
+          <button
+            onClick={exportPNG}
+            className="tool-btn"
+            style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+          >
+            <FileImage size={16} />
+            <span>Export PNG</span>
+          </button>
+          <button
+            onClick={exportSVG}
+            className="tool-btn"
+            style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+          >
+            <FileCode size={16} />
+            <span>Export SVG</span>
+          </button>
+          <button
+            onClick={exportJSON}
+            className="tool-btn"
+            style={{ width: '100%', height: 36, justifyContent: 'flex-start', padding: '0 12px', gap: 10, fontSize: 13 }}
+          >
+            <FileText size={16} />
+            <span>Export JSON</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

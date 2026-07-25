@@ -9,6 +9,7 @@ import { StickyObjectNode } from './objects/StickyObjectNode';
 import { ImageObjectNode } from './objects/ImageObjectNode';
 import { AudioObjectNode } from './objects/AudioObjectNode';
 import { CanvasObject, TextObject, ShapeObject, StickyObject, ImageObject, AudioObject } from '../../shared/types';
+import { physicsEngine } from '../physics/PhysicsEngine';
 import Konva from 'konva';
 
 interface CanvasProps {
@@ -22,7 +23,40 @@ interface CanvasProps {
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   onOpenAudioRecorder: () => void;
+  stageRef: React.RefObject<Konva.Stage | null>;
+  followingUserId: string | null;
 }
+
+// Background Grid Component
+const BackgroundGrid: React.FC<{
+  width: number;
+  height: number;
+  stageX: number;
+  stageY: number;
+  zoom: number;
+}> = ({ width, height, stageX, stageY, zoom }) => {
+  const gridSize = 40 * zoom;
+  const startX = (stageX % gridSize) - gridSize;
+  const startY = (stageY % gridSize) - gridSize;
+
+  const dots = [];
+  for (let x = startX; x < width + gridSize; x += gridSize) {
+    for (let y = startY; y < height + gridSize; y += gridSize) {
+      dots.push(
+        <Circle
+          key={`dot_${x}_${y}`}
+          x={x}
+          y={y}
+          radius={1.5}
+          fill="var(--grid-dot)"
+          listening={false}
+        />
+      );
+    }
+  }
+
+  return <Group listening={false}>{dots}</Group>;
+};
 
 export const Canvas: React.FC<CanvasProps> = ({
   activeTool,
@@ -35,6 +69,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   selectedId,
   setSelectedId,
   onOpenAudioRecorder,
+  stageRef,
+  followingUserId,
 }) => {
   const { canvasObjects, updateObject, updateCursor, updateViewport, onlineUsers } = useRoom();
   const [isPanning, setIsPanning] = useState(false);
@@ -43,9 +79,31 @@ export const Canvas: React.FC<CanvasProps> = ({
     height: window.innerHeight,
   });
 
-  const stageRef = useRef<Konva.Stage>(null);
+  // Physics loop animation frame
+  useEffect(() => {
+    let animId: number;
+    const loop = () => {
+      physicsEngine.stepSimulation(canvasObjects, (id, x, y) => {
+        updateObject(id, { x, y });
+      });
+      animId = requestAnimationFrame(loop);
+    };
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, [canvasObjects, updateObject]);
 
-  // Resize Listener
+  // Lock camera to followed collaborator's viewport
+  useEffect(() => {
+    if (!followingUserId) return;
+    const targetUser = onlineUsers.find((u) => u.userId === followingUserId);
+    if (targetUser && targetUser.viewport) {
+      setStageX(targetUser.viewport.x);
+      setStageY(targetUser.viewport.y);
+      setZoom(targetUser.viewport.zoom);
+    }
+  }, [followingUserId, onlineUsers, setStageX, setStageY, setZoom]);
+
+  // Window Resize Listener
   useEffect(() => {
     const handleResize = () => {
       setWindowDimensions({
@@ -57,17 +115,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Viewport Culling Optimization
-  const visibleObjects = useViewportCulling({
-    canvasObjects,
-    stageX,
-    stageY,
-    zoom,
-    windowWidth: windowDimensions.width,
-    windowHeight: windowDimensions.height,
-  });
-
-  // Broadcast viewport bounds to Awareness
+  // Broadcast Viewport Bounds for Awareness
   useEffect(() => {
     updateViewport({
       x: stageX,
@@ -76,9 +124,19 @@ export const Canvas: React.FC<CanvasProps> = ({
       height: windowDimensions.height,
       zoom,
     });
-  }, [stageX, stageY, zoom, windowDimensions, updateViewport]);
+  }, [stageX, stageY, windowDimensions, zoom, updateViewport]);
 
-  // Cursor anchored zoom
+  // Viewport Culling Engine
+  const visibleObjects = useViewportCulling({
+    objects: canvasObjects,
+    stageX,
+    stageY,
+    zoom,
+    screenWidth: windowDimensions.width,
+    screenHeight: windowDimensions.height,
+  });
+
+  // Wheel Zoom Listener
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -104,8 +162,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     setStageY(newStageY);
   };
 
-  // Mouse Move — Broadcast Awareness Cursor
-  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  // Pointer Move — Broadcast Cursor
+  const handlePointerMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const stage = stageRef.current;
     if (!stage) return;
 
@@ -136,7 +194,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         scaleY={zoom}
         draggable={activeTool === 'pan' || isPanning}
         onWheel={handleWheel}
-        onMouseMove={handleMouseMove}
+        onPointerMove={handlePointerMove}
         onClick={handleStageClick}
         onDragEnd={(e) => {
           if (e.target === stageRef.current) {
@@ -146,7 +204,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
         style={{ cursor: activeTool === 'pan' || isPanning ? 'grab' : 'default' }}
       >
-        {/* Layer 1: Infinite Canvas Grid Pattern */}
+        {/* Layer 1: Infinite Canvas Grid */}
         <Layer key="grid-layer">
           <BackgroundGrid width={windowDimensions.width} height={windowDimensions.height} stageX={stageX} stageY={stageY} zoom={zoom} />
         </Layer>
@@ -154,87 +212,55 @@ export const Canvas: React.FC<CanvasProps> = ({
         {/* Layer 2: Culled Canvas Objects */}
         <Layer key="objects-layer">
           {visibleObjects.map((obj) => {
-            const isSelected = selectedId === obj.id;
+            const isSelected = obj.id === selectedId;
             const onSelect = () => setSelectedId(obj.id);
             const onChange = (patch: Partial<CanvasObject>) => updateObject(obj.id, patch);
 
             switch (obj.type) {
               case 'text':
-                return (
-                  <TextObjectNode
-                    key={obj.id}
-                    object={obj as TextObject}
-                    isSelected={isSelected}
-                    onSelect={onSelect}
-                    onChange={onChange}
-                  />
-                );
+                return <TextObjectNode key={obj.id} object={obj as TextObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
               case 'shape':
-                return (
-                  <ShapeObjectNode
-                    key={obj.id}
-                    object={obj as ShapeObject}
-                    isSelected={isSelected}
-                    onSelect={onSelect}
-                    onChange={onChange}
-                  />
-                );
+                return <ShapeObjectNode key={obj.id} object={obj as ShapeObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
               case 'sticky':
-                return (
-                  <StickyObjectNode
-                    key={obj.id}
-                    object={obj as StickyObject}
-                    isSelected={isSelected}
-                    onSelect={onSelect}
-                    onChange={onChange}
-                  />
-                );
+                return <StickyObjectNode key={obj.id} object={obj as StickyObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
               case 'image':
-                return (
-                  <ImageObjectNode
-                    key={obj.id}
-                    object={obj as ImageObject}
-                    isSelected={isSelected}
-                    onSelect={onSelect}
-                    onChange={onChange}
-                  />
-                );
+                return <ImageObjectNode key={obj.id} object={obj as ImageObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
               case 'audio':
-                return (
-                  <AudioObjectNode
-                    key={obj.id}
-                    object={obj as AudioObject}
-                    isSelected={isSelected}
-                    onSelect={onSelect}
-                    onChange={onChange}
-                    stageX={stageX}
-                    stageY={stageY}
-                    zoom={zoom}
-                  />
-                );
+                return <AudioObjectNode key={obj.id} object={obj as AudioObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} stageX={stageX} stageY={stageY} zoom={zoom} viewportWidth={windowDimensions.width} viewportHeight={windowDimensions.height} />;
               default:
                 return null;
             }
           })}
         </Layer>
 
-        {/* Layer 3: Awareness Live Cursors */}
-        <Layer key="awareness-cursors-layer">
-          {onlineUsers.map((user, idx) => {
+        {/* Layer 3: Remote Collaborator Cursors & Floating Reactions */}
+        <Layer key="cursors-layer" listening={false}>
+          {onlineUsers.map((user, i) => {
             if (!user.cursor) return null;
+            const userReaction = (user as any).reaction;
             return (
-              <Group key={user.userId || idx} x={user.cursor.x} y={user.cursor.y}>
-                <Circle radius={6} fill={user.color || '#3b82f6'} shadowColor={user.color || '#3b82f6'} shadowBlur={8} />
+              <Group key={`user_${user.userId || i}`} x={user.cursor.x} y={user.cursor.y}>
+                {/* Pointer Cursor */}
+                <Circle radius={6} fill={user.color || '#3b82f6'} stroke="#ffffff" strokeWidth={2} />
                 <KonvaText
+                  text={user.username || 'Collaborator'}
                   x={10}
                   y={-6}
-                  text={user.username || 'Collaborator'}
                   fontSize={12}
                   fontFamily="Inter"
-                  fontStyle="bold"
                   fill="#ffffff"
                   padding={4}
                 />
+
+                {/* Floating Emoji Particle */}
+                {userReaction && Date.now() - userReaction.timestamp < 3000 && (
+                  <KonvaText
+                    text={userReaction.emoji}
+                    x={0}
+                    y={-30}
+                    fontSize={28}
+                  />
+                )}
               </Group>
             );
           })}
@@ -242,36 +268,4 @@ export const Canvas: React.FC<CanvasProps> = ({
       </Stage>
     </div>
   );
-};
-
-// Subtle Infinite Grid Dot Matrix
-const BackgroundGrid: React.FC<{ width: number; height: number; stageX: number; stageY: number; zoom: number }> = ({
-  width,
-  height,
-  stageX,
-  stageY,
-  zoom,
-}) => {
-  const gridSize = 40;
-  const startX = Math.floor((-stageX / zoom) / gridSize) * gridSize - gridSize;
-  const endX = Math.ceil((width - stageX) / zoom / gridSize) * gridSize + gridSize;
-  const startY = Math.floor((-stageY / zoom) / gridSize) * gridSize - gridSize;
-  const endY = Math.ceil((height - stageY) / zoom / gridSize) * gridSize + gridSize;
-
-  const dots = [];
-  for (let x = startX; x <= endX; x += gridSize) {
-    for (let y = startY; y <= endY; y += gridSize) {
-      dots.push(
-        <Circle
-          key={`dot_${x}_${y}`}
-          x={x}
-          y={y}
-          radius={1.2 / zoom}
-          fill={document.documentElement.getAttribute('data-theme') === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)'}
-        />
-      );
-    }
-  }
-
-  return <Group>{dots}</Group>;
 };
