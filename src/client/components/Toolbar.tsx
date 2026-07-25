@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   StickyNote,
   Image as ImageIcon,
+  Mic,
   Zap,
 } from 'lucide-react';
 
@@ -331,6 +332,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         style={{ display: 'none' }}
         onChange={handleImageUpload}
       />
+
+      {/* Record Audio Voice Note */}
+      <button title="Record Voice Note (Audio)" className="tool-btn" onClick={() => setActiveTool('audio')}>
+        <Mic size={18} />
+      </button>
 
       <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px' }} />
 

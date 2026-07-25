@@ -63,10 +63,19 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved;
   });
 
-  const setUsername = useCallback((name: string) => {
-    sessionStorage.setItem('boundless_username', name);
-    setUsernameState(name);
-  }, []);
+  // Save current room to localStorage under recent rooms
+  useEffect(() => {
+    if (!roomId) return;
+    try {
+      const saved = localStorage.getItem('boundless_recent_rooms');
+      let list: Array<{ id: string; joinedAt: number }> = saved ? JSON.parse(saved) : [];
+      list = list.filter((r) => r.id !== roomId);
+      list.unshift({ id: roomId, joinedAt: Date.now() });
+      localStorage.setItem('boundless_recent_rooms', JSON.stringify(list.slice(0, 5)));
+    } catch (e) {
+      console.error('Failed to save recent room:', e);
+    }
+  }, [roomId]);
 
   // Yjs Y.Doc instance
   const ydoc = useMemo(() => new Y.Doc(), []);
@@ -86,14 +95,22 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const wsProvider = new WebsocketProvider(wsUrl, roomId, ydoc);
     setProvider(wsProvider);
 
+    // Initial connection status
+    setIsConnected(wsProvider.wsconnected);
+
     // IndexedDB offline cache setup
     const indexedDBProvider = new IndexeddbPersistence(roomId, ydoc);
     indexedDBProvider.on('synced', () => {
       console.log('📦 Local IndexedDB synced for room:', roomId);
     });
 
-    wsProvider.on('status', (event: { status: string }) => {
+    const handleStatus = (event: { status: string }) => {
       setIsConnected(event.status === 'connected');
+    };
+
+    wsProvider.on('status', handleStatus);
+    wsProvider.on('sync', (isSynced: boolean) => {
+      if (isSynced) setIsConnected(true);
     });
 
     // Observer for Objects Y.Map changes
@@ -127,10 +144,20 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       yObjects.unobserve(handleObjectsChange);
       awareness.off('change', handleAwarenessChange);
+      wsProvider.off('status', handleStatus);
       wsProvider.destroy();
       indexedDBProvider.destroy();
     };
   }, [ydoc, roomId, yObjects]);
+
+  // Set Username & Reconnect Provider if needed
+  const setUsername = useCallback((name: string) => {
+    sessionStorage.setItem('boundless_username', name);
+    setUsernameState(name);
+    if (provider && !provider.wsconnected) {
+      provider.connect();
+    }
+  }, [provider]);
 
   // Update user awareness details
   useEffect(() => {
@@ -191,6 +218,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       provider.awareness.setLocalState(null);
       provider.disconnect();
     }
+    setIsConnected(false);
     setUsernameState(null);
   }, [provider]);
 

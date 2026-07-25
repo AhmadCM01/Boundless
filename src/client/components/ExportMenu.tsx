@@ -11,15 +11,26 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
   const { canvasObjects, roomId } = useRoom();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Helper helper to trigger download reliably across browsers
+  const triggerDownload = (url: string, filename: string) => {
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Export 1: High-res PNG Image
   const exportPNG = () => {
     const stage = stageRef.current;
     if (!stage) return;
-    const dataUrl = stage.toDataURL({ pixelRatio: 2 });
-    const link = document.createElement('a');
-    link.download = `boundless_${roomId}_${Date.now()}.png`;
-    link.href = dataUrl;
-    link.click();
+    try {
+      const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+      triggerDownload(dataUrl, `boundless_${roomId}_${Date.now()}.png`);
+    } catch (err) {
+      console.error('PNG Export failed:', err);
+    }
     setIsOpen(false);
   };
 
@@ -30,8 +41,8 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
     const minY = Math.min(...objects.map((o) => o.y), 0) - 100;
     const maxX = Math.max(...objects.map((o) => o.x + (o.width || 100)), 1200) + 100;
     const maxY = Math.max(...objects.map((o) => o.y + (o.height || 100)), 800) + 100;
-    const width = maxX - minX;
-    const height = maxY - minY;
+    const width = Math.max(800, maxX - minX);
+    const height = Math.max(600, maxY - minY);
 
     let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}" style="background-color: #121318;">\n`;
 
@@ -61,10 +72,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
 
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = `boundless_${roomId}_${Date.now()}.svg`;
-    link.href = url;
-    link.click();
+    triggerDownload(url, `boundless_${roomId}_${Date.now()}.svg`);
     URL.revokeObjectURL(url);
     setIsOpen(false);
   };
@@ -85,10 +93,7 @@ export const ExportMenu: React.FC<Props> = ({ stageRef }) => {
 
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = `boundless_${roomId}_${Date.now()}.json`;
-    link.href = url;
-    link.click();
+    triggerDownload(url, `boundless_${roomId}_${Date.now()}.json`);
     URL.revokeObjectURL(url);
     setIsOpen(false);
   };

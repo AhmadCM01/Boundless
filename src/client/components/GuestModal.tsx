@@ -1,10 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
-import { Sparkles, User, ArrowRight } from 'lucide-react';
+import { Sparkles, User, ArrowRight, History, DoorOpen } from 'lucide-react';
+
+interface RecentRoom {
+  id: string;
+  joinedAt: number;
+}
 
 export const GuestModal: React.FC = () => {
-  const { username, setUsername } = useRoom();
+  const { username, setUsername, roomId } = useRoom();
   const [inputName, setInputName] = useState('');
+  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('boundless_recent_rooms');
+      if (saved) {
+        const parsed: RecentRoom[] = JSON.parse(saved);
+        setRecentRooms(parsed);
+      }
+    } catch (e) {
+      console.error('Failed to load recent rooms:', e);
+    }
+  }, []);
 
   if (username) return null;
 
@@ -13,6 +31,10 @@ export const GuestModal: React.FC = () => {
     if (inputName.trim()) {
       setUsername(inputName.trim());
     }
+  };
+
+  const navigateToRoom = (targetRoomId: string) => {
+    window.location.href = `/room/${targetRoomId}`;
   };
 
   return (
@@ -30,10 +52,11 @@ export const GuestModal: React.FC = () => {
       zIndex: 2000,
     }}>
       <div className="glass-panel animate-fade-in" style={{
-        width: 380,
+        width: 420,
         padding: 32,
         borderRadius: 24,
         textAlign: 'center',
+        maxWidth: '90vw',
       }}>
         <div style={{
           width: 56,
@@ -49,15 +72,15 @@ export const GuestModal: React.FC = () => {
           <Sparkles size={28} color="#fff" />
         </div>
 
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, marginBottom: 8, color: 'var(--text-heading)' }}>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, marginBottom: 6, color: 'var(--text-heading)' }}>
           Join Boundless
         </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-          Enter a username to start collaborating live on this infinite canvas.
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
+          Collaborate live on room <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{roomId}</strong>
         </p>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ position: 'relative', marginBottom: 20 }}>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
+          <div style={{ position: 'relative', marginBottom: 16 }}>
             <User size={18} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: 14 }} />
             <input
               type="text"
@@ -84,7 +107,7 @@ export const GuestModal: React.FC = () => {
             className="btn-primary"
             style={{
               width: '100%',
-              height: 48,
+              height: 44,
               borderRadius: 14,
               fontSize: 15,
               display: 'flex',
@@ -97,6 +120,45 @@ export const GuestModal: React.FC = () => {
             <ArrowRight size={18} />
           </button>
         </form>
+
+        {/* Recently Visited Rooms List */}
+        {recentRooms.length > 0 && (
+          <div style={{ borderTop: '1px solid var(--bg-panel-border)', paddingTop: 16, textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <History size={14} />
+              <span>Recent Rooms</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
+              {recentRooms.map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => navigateToRoom(room.id)}
+                  className="tool-btn"
+                  style={{
+                    width: '100%',
+                    height: 36,
+                    padding: '0 12px',
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 13,
+                    background: room.id === roomId ? 'var(--btn-hover-bg)' : 'transparent',
+                    border: '1px solid var(--bg-panel-border)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-main)' }}>
+                    <DoorOpen size={14} color="var(--accent-primary)" />
+                    <span>{room.id}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {room.id === roomId ? 'Current' : 'Re-join →'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -22,6 +22,10 @@ export const TextObjectNode: React.FC<Props> = ({
   const trRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
+    setTextValue(object.text);
+  }, [object.text]);
+
+  useEffect(() => {
     if (isSelected && trRef.current && textRef.current) {
       trRef.current.nodes([textRef.current]);
       trRef.current.getLayer()?.batchDraw();
@@ -32,10 +36,10 @@ export const TextObjectNode: React.FC<Props> = ({
     setIsEditing(true);
   };
 
-  const handleBlur = () => {
+  const handleSave = () => {
     setIsEditing(false);
-    if (textValue !== object.text) {
-      onChange({ text: textValue });
+    if (textValue.trim() !== object.text) {
+      onChange({ text: textValue.trim() || 'Text' });
     }
   };
 
@@ -64,7 +68,7 @@ export const TextObjectNode: React.FC<Props> = ({
           fill={object.fill || '#f3f4f6'}
           width={object.width}
           wrap="word"
-          opacity={isEditing ? 0 : 1}
+          opacity={isEditing ? 0.3 : 1}
           onTransformEnd={() => {
             const node = textRef.current;
             if (node) {
@@ -90,6 +94,76 @@ export const TextObjectNode: React.FC<Props> = ({
             return newBox;
           }}
         />
+      )}
+
+      {/* HTML Text Editing Dialog */}
+      {isEditing && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000,
+          }}
+          onClick={handleSave}
+        >
+          <div
+            className="glass-panel animate-fade-in"
+            style={{ width: 360, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)' }}>Edit Text Block</h4>
+            <textarea
+              value={textValue}
+              onChange={(e) => setTextValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSave();
+                }
+              }}
+              rows={4}
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: 'var(--bg-input)',
+                border: '1px solid var(--input-border)',
+                color: 'var(--text-main)',
+                fontSize: 15,
+                fontFamily: 'Inter',
+                resize: 'vertical',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="tool-btn"
+                style={{ padding: '6px 12px', width: 'auto', height: 'auto', fontSize: 13 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="btn-primary"
+                style={{ padding: '6px 16px', fontSize: 13 }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
