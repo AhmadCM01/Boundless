@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Y from 'yjs';
 import { useRoom } from '../context/RoomContext';
-import { Play, Pause, RotateCcw, X, History } from 'lucide-react';
-import { CanvasObject } from '../../shared/types';
+import { Play, Pause, RotateCcw, X, History, User, Sparkles } from 'lucide-react';
+import { CanvasObject, TextObject, ShapeObject, StickyObject, ImageObject } from '../../shared/types';
 
 interface Props {
   onClose: () => void;
@@ -105,6 +105,35 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
     return () => clearInterval(timerRef.current);
   }, [isPlaying, speed, updates.length]);
 
+  // Calculate bounding box and adaptive fit scale so all objects frame perfectly on screen
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  if (replayObjects.length > 0) {
+    replayObjects.forEach((obj) => {
+      const x = obj.x || 0;
+      const y = obj.y || 0;
+      const w = obj.width || 120;
+      const h = obj.height || 100;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    });
+  } else {
+    minX = 0; minY = 0; maxX = 300; maxY = 200;
+  }
+  const contentWidth = Math.max(200, maxX - minX);
+  const contentHeight = Math.max(200, maxY - minY);
+  const centerWorldX = minX + contentWidth / 2;
+  const centerWorldY = minY + contentHeight / 2;
+
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth * 0.75 : 800;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight * 0.55 : 500;
+  const fitScale = Math.min(1, Math.min(viewportWidth / contentWidth, viewportHeight / contentHeight));
+
+  // Last active creator for current step banner
+  const lastActiveObj = replayObjects[replayObjects.length - 1];
+  const activeAuthor = lastActiveObj?.createdBy || 'Collaborator';
+
   return (
     <div
       style={{
@@ -112,8 +141,11 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
         top: 0,
         left: 0,
         width: '100vw',
-        height: '100vh',
-        backgroundColor: 'var(--bg-dark)',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available',
+        backgroundColor: 'var(--modal-backdrop)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         zIndex: 99999,
         display: 'flex',
         flexDirection: 'column',
@@ -133,13 +165,19 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
           alignItems: 'center',
           justifyContent: 'space-between',
           zIndex: 100,
+          borderRadius: 16,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <History size={22} color="#3b82f6" />
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-heading)' }}>
-            Full Canvas Time Travel Replay ({replayObjects.length} objects)
-          </h3>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>
+              Full Canvas Session Replay ({replayObjects.length} objects)
+            </h3>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Step {currentIndex + 1} of {updates.length || 1} • Author: {activeAuthor} • Scale: {Math.round(fitScale * 100)}%
+            </span>
+          </div>
         </div>
         <button onClick={onClose} className="btn-primary" style={{ padding: '8px 16px', gap: 6 }}>
           <X size={18} />
@@ -147,14 +185,14 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
         </button>
       </div>
 
-      {/* Full Canvas Viewport */}
+      {/* Full Canvas Viewport Centered with Adaptive Framing */}
       <div
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           width: '100vw',
-          height: '100vh',
+          height: '100dvh',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
@@ -163,33 +201,84 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
       >
         {replayObjects.map((obj) => {
           const color = (obj as any).fill || (obj as any).color || '#6366f1';
+          const isCircle = obj.type === 'shape' && (obj as ShapeObject).shapeType === 'circle';
+          const author = obj.createdBy || 'Collaborator';
+          const offsetX = ((obj.x || 0) + (obj.width || 120) / 2 - centerWorldX) * fitScale;
+          const offsetY = ((obj.y || 0) + (obj.height || 100) / 2 - centerWorldY) * fitScale;
+
           return (
             <div
               key={obj.id}
               style={{
                 position: 'absolute',
-                left: `calc(50vw + ${(obj.x || 0)}px)`,
-                top: `calc(50vh + ${(obj.y || 0)}px)`,
+                left: `calc(50vw + ${offsetX}px)`,
+                top: `calc(50vh + ${offsetY}px)`,
                 width: obj.width || 120,
                 height: obj.height || 100,
-                borderRadius: obj.type === 'shape' && (obj as any).shapeType === 'circle' ? '50%' : 8,
-                backgroundColor: color,
-                border: '2px solid rgba(255, 255, 255, 0.3)',
-                color: '#ffffff',
-                fontSize: 13,
-                fontWeight: 600,
+                borderRadius: isCircle ? '50%' : 10,
+                backgroundColor: obj.type === 'text' ? 'transparent' : color,
+                border: obj.type === 'text' ? 'none' : '2px solid rgba(255, 255, 255, 0.4)',
+                color: (obj as TextObject).fill || '#ffffff',
+                fontSize: (obj as TextObject).fontSize || 14,
+                fontWeight: (obj as TextObject).fontWeight === 'bold' ? 700 : 500,
+                fontStyle: (obj as TextObject).fontStyle === 'italic' ? 'italic' : 'normal',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: 8,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                padding: 10,
+                boxShadow: obj.type === 'text' ? 'none' : '0 8px 24px rgba(0,0,0,0.4)',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 textOverflow: 'ellipsis',
                 overflow: 'hidden',
-                whiteSpace: 'nowrap',
+                wordBreak: 'break-word',
+                transform: `translate(-50%, -50%) scale(${fitScale}) rotate(${obj.rotation || 0}deg)`,
+                transformOrigin: 'center center',
               }}
             >
-              {obj.type === 'sticky' ? (obj as any).text : obj.type === 'text' ? (obj as any).text : obj.type}
+              {/* Creator Author Badge Pill */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -12,
+                  left: 8,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  backgroundColor: '#3b82f6',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  whiteSpace: 'nowrap',
+                  zIndex: 2,
+                }}
+              >
+                <User size={10} />
+                <span>{author}</span>
+              </div>
+
+              {/* Node Content */}
+              {obj.type === 'sticky' ? (
+                <div style={{ color: '#1f2937', fontWeight: 600, fontSize: 13, textAlign: 'center' }}>
+                  {(obj as StickyObject).text || 'Sticky Note'}
+                </div>
+              ) : obj.type === 'text' ? (
+                <div style={{ textAlign: (obj as TextObject).textAlign || 'left', width: '100%' }}>
+                  {(obj as TextObject).text || 'Text Node'}
+                </div>
+              ) : obj.type === 'image' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <Sparkles size={20} color="#ffffff" />
+                  <span style={{ fontSize: 11 }}>Image Node</span>
+                </div>
+              ) : (
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
+                  {(obj as ShapeObject).shapeType || obj.type}
+                </span>
+              )}
             </div>
           );
         })}
@@ -206,11 +295,12 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
           flexDirection: 'column',
           gap: 14,
           zIndex: 100,
+          borderRadius: 16,
         }}
       >
         {/* Scrubber Slider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', width: 80, fontWeight: 700 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', width: 90, fontWeight: 700 }}>
             {currentIndex + 1} / {updates.length || 1}
           </span>
           <input
@@ -222,7 +312,7 @@ export const ReplayModal: React.FC<Props> = ({ onClose }) => {
               setIsPlaying(false);
               setCurrentIndex(parseInt(e.target.value, 10));
             }}
-            style={{ flex: 1, cursor: 'pointer', height: 8 }}
+            style={{ flex: 1, cursor: 'pointer', height: 8, accentColor: 'var(--accent-primary)' }}
           />
         </div>
 

@@ -21,6 +21,11 @@ export interface TextObject extends BaseCanvasObject {
   fontSize: number;
   fontFamily: string;
   fill: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  textTransform?: string;
+  textAlign?: string;
+  textDecoration?: string;
 }
 
 export interface ShapeObject extends BaseCanvasObject {
@@ -36,6 +41,9 @@ export interface StickyObject extends BaseCanvasObject {
   text: string;
   color: string;
   author: string;
+  fontSize?: number;
+  fontWeight?: string;
+  textAlign?: string;
 }
 
 export interface ImageObject extends BaseCanvasObject {

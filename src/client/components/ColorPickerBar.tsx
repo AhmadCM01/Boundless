@@ -99,8 +99,8 @@ export const ColorPickerBar: React.FC<Props> = ({
   const rawScreenX = centerWorldX * safeZoom + safeStageX;
   const rawScreenY = topWorldY * safeZoom + safeStageY - 14;
 
-  // Clamped position to keep toolbar visible within screen boundaries
-  const screenX = Math.max(160, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 160, rawScreenX));
+  // Clamped position to keep toolbar visible within screen boundaries and avoid right sidebar collision
+  const screenX = Math.max(160, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 320, rawScreenX));
   const screenY = Math.max(85, Math.min((typeof window !== 'undefined' ? window.innerHeight : 800) - 60, rawScreenY));
 
   return (

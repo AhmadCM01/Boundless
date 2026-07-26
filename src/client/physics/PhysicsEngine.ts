@@ -1,139 +1,162 @@
-import { CanvasObject } from '../../shared/types';
+import Matter from 'matter-js';
+import { CanvasObject, ShapeObject } from '../../shared/types';
 
-export const ENABLE_PHYSICS = true;
-
-export interface PhysicsObject {
+export interface PhysicsStateUpdate {
   id: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
+  rotation: number;
   vx: number;
   vy: number;
   isResting: boolean;
-  lastUpdated: number;
 }
 
 export class PhysicsEngine {
-  private activeObjects: Map<string, PhysicsObject> = new Map();
-  private spatialHash: Map<string, string[]> = new Map();
-  private bucketSize = 350; // Spatial hash cell dimension in canvas coordinates
+  private engine: Matter.Engine;
+  private bodiesMap: Map<string, Matter.Body> = new Map();
+  private activeThrows: Set<string> = new Set();
+  private enabled: boolean = false;
 
-  // Step 1: Initialize throw momentum on drag release
-  public throwObject(obj: CanvasObject, vx: number, vy: number): void {
-    if (!ENABLE_PHYSICS) return;
-    this.activeObjects.set(obj.id, {
-      id: obj.id,
-      x: obj.x,
-      y: obj.y,
-      width: obj.width || 100,
-      height: obj.height || 100,
-      vx,
-      vy,
-      isResting: false,
-      lastUpdated: Date.now(),
+  constructor() {
+    this.engine = Matter.Engine.create({
+      gravity: { x: 0, y: 0, scale: 0 },
     });
   }
 
-  // Step 2 & 3: Run 60 FPS physics tick for active objects only
-  public stepSimulation(
-    canvasObjects: Map<string, CanvasObject>,
-    onUpdatePosition: (id: string, x: number, y: number) => void,
-    fps: number = 60
-  ): void {
-    if (!ENABLE_PHYSICS || this.activeObjects.size === 0) return;
-
-    // Mobile Degradation: Cap active objects to max 5 if FPS < 45
-    const maxActive = fps < 45 ? 5 : 20;
-
-    // Rebuild spatial hash grid for active objects
-    this.spatialHash.clear();
-    let count = 0;
-
-    this.activeObjects.forEach((pObj, id) => {
-      if (count >= maxActive) return;
-      count++;
-
-      // Apply friction damping
-      pObj.vx *= 0.95;
-      pObj.vy *= 0.95;
-
-      pObj.x += pObj.vx;
-      pObj.y += pObj.vy;
-
-      // Check resting threshold
-      if (Math.abs(pObj.vx) < 0.1 && Math.abs(pObj.vy) < 0.1) {
-        pObj.vx = 0;
-        pObj.vy = 0;
-        pObj.isResting = true;
-      }
-
-      // Add to spatial hash grid
-      const key = `${Math.floor(pObj.x / this.bucketSize)}_${Math.floor(pObj.y / this.bucketSize)}`;
-      let bucket = this.spatialHash.get(key);
-      if (!bucket) {
-        bucket = [];
-        this.spatialHash.set(key, bucket);
-      }
-      bucket.push(id);
-
-      // Throttled position update callback (every 150ms or when resting)
-      const now = Date.now();
-      if (now - pObj.lastUpdated >= 150 || pObj.isResting) {
-        pObj.lastUpdated = now;
-        onUpdatePosition(pObj.id, pObj.x, pObj.y);
-      }
-    });
-
-    // Step 2: Handle Spatial Collisions between objects in same/adjacent buckets
-    this.spatialHash.forEach((ids) => {
-      if (ids.length < 2) return;
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          const a = this.activeObjects.get(ids[i]);
-          const b = this.activeObjects.get(ids[j]);
-          if (a && b) {
-            this.resolveCollision(a, b);
-          }
-        }
-      }
-    });
-
-    // Remove resting objects
-    this.activeObjects.forEach((pObj, id) => {
-      if (pObj.isResting) {
-        this.activeObjects.delete(id);
-      }
-    });
+  public enable(): void {
+    this.enabled = true;
   }
 
-  // Elastic collision response
-  private resolveCollision(a: PhysicsObject, b: PhysicsObject): void {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const minDist = (a.width + b.width) / 2;
+  public disable(): void {
+    this.enabled = false;
+    this.clear();
+  }
 
-    if (dist > 0 && dist < minDist) {
-      const overlap = minDist - dist;
-      const nx = dx / dist;
-      const ny = dy / dist;
+  public isEnabled(): boolean {
+    return this.enabled;
+  }
 
-      // Bounce velocity swap
-      const tempVx = a.vx;
-      const tempVy = a.vy;
-      a.vx = b.vx * 0.8 - nx * overlap * 0.1;
-      a.vy = b.vy * 0.8 - ny * overlap * 0.1;
-      b.vx = tempVx * 0.8 + nx * overlap * 0.1;
-      b.vy = tempVy * 0.8 + ny * overlap * 0.1;
-
-      a.isResting = false;
-      b.isResting = false;
+  public throwObject(id: string, vx: number, vy: number): void {
+    let body = this.bodiesMap.get(id);
+    if (body) {
+      this.activeThrows.add(id);
+      Matter.Body.setStatic(body, false);
+      Matter.Body.setVelocity(body, { x: vx, y: vy });
     }
   }
 
-  public getActiveCount(): number {
-    return this.activeObjects.size;
+  public impulseAllObjects(): void {
+    this.bodiesMap.forEach((body, id) => {
+      this.activeThrows.add(id);
+      Matter.Body.setStatic(body, false);
+      const vx = (Math.random() - 0.5) * 12;
+      const vy = (Math.random() - 0.5) * 12;
+      Matter.Body.setVelocity(body, { x: vx, y: vy });
+    });
+  }
+
+  public syncObjects(objects: Map<string, CanvasObject>, currentUserId: string): void {
+    if (!this.enabled) return;
+
+    const currentIds = new Set(objects.keys());
+
+    // 1. Remove dead bodies
+    this.bodiesMap.forEach((body, id) => {
+      if (!currentIds.has(id)) {
+        Matter.Composite.remove(this.engine.world, body);
+        this.bodiesMap.delete(id);
+        this.activeThrows.delete(id);
+      }
+    });
+
+    // 2. Add or update active bodies
+    objects.forEach((obj, id) => {
+      let body = this.bodiesMap.get(id);
+      const w = Math.max(30, obj.width || 100);
+      const h = Math.max(30, obj.height || 100);
+      const centerX = obj.x + w / 2;
+      const centerY = obj.y + h / 2;
+
+      const isOwned = !obj.physicsOwner || obj.physicsOwner === currentUserId;
+      const isCircle = obj.type === 'shape' && (obj as ShapeObject).shapeType === 'circle';
+
+      if (!body) {
+        body = isCircle
+          ? Matter.Bodies.circle(centerX, centerY, w / 2, { frictionAir: 0.02, restitution: 0.85, density: 0.001 })
+          : Matter.Bodies.rectangle(centerX, centerY, w, h, { frictionAir: 0.02, restitution: 0.85, density: 0.001 });
+        (body as any).canvasId = id;
+        Matter.Composite.add(this.engine.world, body);
+        this.bodiesMap.set(id, body);
+      }
+
+      // CRDT Ownership Guard: Active thrown objects must NOT be overridden by sync
+      if (this.activeThrows.has(id)) {
+        Matter.Body.setStatic(body, false);
+      } else if (!isOwned || obj.isKinematic) {
+        Matter.Body.setStatic(body, true);
+        Matter.Body.setPosition(body, { x: centerX, y: centerY });
+        if (obj.rotation !== undefined) {
+          Matter.Body.setAngle(body, (obj.rotation * Math.PI) / 180);
+        }
+      }
+    });
+  }
+
+  public stepSimulation(
+    objects: Map<string, CanvasObject>,
+    currentUserId: string
+  ): PhysicsStateUpdate[] {
+    if (!this.enabled || this.bodiesMap.size === 0) return [];
+
+    // Advance Matter.js physics step
+    Matter.Engine.update(this.engine, 1000 / 60);
+
+    const updates: PhysicsStateUpdate[] = [];
+
+    this.bodiesMap.forEach((body, id) => {
+      if (body.isStatic) return;
+
+      const obj = objects.get(id);
+      if (!obj) return;
+
+      const w = obj.width || 100;
+      const h = obj.height || 100;
+      const topLeftX = body.position.x - w / 2;
+      const topLeftY = body.position.y - h / 2;
+      const rotationDeg = Math.round((body.angle * 180) / Math.PI);
+
+      const vx = body.velocity.x;
+      const vy = body.velocity.y;
+      const speed = Math.sqrt(vx * vx + vy * vy);
+
+      // Object is active if it has speed or was thrown
+      if (speed > 0.02 || this.activeThrows.has(id)) {
+        const isResting = speed < 0.05;
+        if (isResting) {
+          Matter.Body.setVelocity(body, { x: 0, y: 0 });
+          this.activeThrows.delete(id);
+        }
+
+        updates.push({
+          id,
+          x: Math.round(topLeftX),
+          y: Math.round(topLeftY),
+          rotation: rotationDeg,
+          vx,
+          vy,
+          isResting,
+        });
+      }
+    });
+
+    return updates;
+  }
+
+  public clear(): void {
+    Matter.Composite.clear(this.engine.world, false);
+    Matter.Engine.clear(this.engine);
+    this.bodiesMap.clear();
+    this.activeThrows.clear();
   }
 }
 

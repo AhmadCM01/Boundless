@@ -50,7 +50,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
         className="glass-panel minimap-dock"
         title="Show Minimap Radar"
         style={{
-          position: 'absolute',
+          position: 'fixed',
           bottom: isMobile ? 88 : 24,
           right: isMobile ? 12 : 24,
           width: 36,
@@ -59,7 +59,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 100,
+          zIndex: 9999,
           cursor: 'pointer',
         }}
       >
@@ -72,7 +72,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
     <div
       className="glass-panel minimap-dock"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         bottom: isMobile ? 88 : 24,
         right: isMobile ? 12 : 24,
         width: MINIMAP_WIDTH,
@@ -80,7 +80,7 @@ export const Minimap: React.FC<MinimapProps> = ({ stageX, stageY, zoom }) => {
         borderRadius: 14,
         overflow: 'hidden',
         border: '1px solid var(--minimap-border)',
-        zIndex: 100,
+        zIndex: 9999,
       }}
     >
       {/* Minimize Toggle Button */}

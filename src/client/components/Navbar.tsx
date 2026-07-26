@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRoom } from '../context/RoomContext';
 import { BrandLogo } from './BrandLogo';
 import { ExportMenu } from './ExportMenu';
-import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut, History, Eye, Edit3, Menu, X } from 'lucide-react';
+import { Share2, Check, Wifi, WifiOff, Sun, Moon, LogOut, History, Eye, Edit3, Menu, X, Undo2, Redo2 } from 'lucide-react';
 import Konva from 'konva';
 
 interface NavbarProps {
@@ -18,7 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   followingUserId,
   setFollowingUserId,
 }) => {
-  const { roomId, username, userColor, onlineUsers, isConnected, setUsername, logout } = useRoom();
+  const { roomId, username, userColor, onlineUsers, isConnected, setUsername, logout, undo, redo } = useRoom();
   const [copied, setCopied] = useState(false);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempName, setTempName] = useState(username || '');
@@ -84,22 +84,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header
-      className="glass-panel"
+      className="glass-panel navbar-floating-pill"
       style={{
-        position: 'absolute',
-        top: 12,
-        left: 12,
-        right: 12,
+        position: 'fixed',
+        top: 16,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 'calc(100vw - 32px)',
+        maxWidth: 1150,
         height: 56,
-        padding: '0 12px',
+        padding: '0 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
         overflow: 'visible',
         gap: 8,
-        maxWidth: 'calc(100vw - 24px)',
-        zIndex: 1000,
+        zIndex: 9999,
       }}
     >
       {/* Brand & Room Info */}
@@ -125,34 +126,34 @@ export const Navbar: React.FC<NavbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '4px 10px',
+            padding: '4px 12px',
             borderRadius: 10,
             border: '1px solid var(--bg-panel-border)',
             background: 'var(--btn-hover-bg)',
             height: 36,
             width: 'auto',
-            maxWidth: 160,
+            maxWidth: 280,
             flexShrink: 1,
             minWidth: 0,
           }}
         >
-          <span className="hide-on-mobile" style={{ fontSize: 12, color: 'var(--text-muted)' }}>Room:</span>
+          <span className="hide-on-mobile" style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>Room:</span>
           <span
             className="room-title-text"
             style={{
               fontSize: 13,
               fontWeight: 700,
-              color: 'var(--text-main)',
+              color: 'var(--text-heading)',
               fontFamily: 'Inter',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              maxWidth: 110,
+              maxWidth: 200,
             }}
           >
             {roomTitle}
           </span>
-          <Edit3 size={12} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+          <Edit3 size={13} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
         </button>
 
         {/* Sync Status Badge */}
@@ -168,6 +169,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hide-on-mobile" style={{ color: '#ef4444', fontWeight: 600 }}>Offline</span>
             </>
           )}
+        </div>
+
+        {/* Undo / Redo Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <button
+            onClick={undo}
+            className="tool-btn"
+            title="Undo (Ctrl+Z)"
+            style={{ width: 32, height: 32, padding: 0, justifyContent: 'center' }}
+          >
+            <Undo2 size={16} />
+          </button>
+          <button
+            onClick={redo}
+            className="tool-btn"
+            title="Redo (Ctrl+Y / Cmd+Shift+Z)"
+            style={{ width: 32, height: 32, padding: 0, justifyContent: 'center' }}
+          >
+            <Redo2 size={16} />
+          </button>
         </div>
       </div>
 

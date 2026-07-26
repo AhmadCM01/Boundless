@@ -16,6 +16,7 @@ import {
   Image as ImageIcon,
   Mic,
   Zap,
+  Sparkles,
   MoreHorizontal,
 } from 'lucide-react';
 
@@ -27,6 +28,8 @@ interface ToolbarProps {
   stageX: number;
   stageY: number;
   zoom: number;
+  isPhysicsEnabled?: boolean;
+  setIsPhysicsEnabled?: (enabled: boolean) => void;
 }
 
 const STICKY_COLORS = ['#fef08a', '#bbf7d0', '#bae6fd', '#fbcfe8', '#fed7aa'];
@@ -37,6 +40,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   stageX,
   stageY,
   zoom,
+  isPhysicsEnabled = false,
+  setIsPhysicsEnabled,
 }) => {
   const { addObject, canvasObjects, username } = useRoom();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,14 +66,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       type: 'text',
       x: pos.x,
       y: pos.y,
-      width: 200,
+      width: 280,
       height: 60,
       rotation: 0,
       zIndex: canvasObjects.size + 1,
       text: 'Double click to edit text...',
       fontSize: 20,
       fontFamily: 'Inter',
-      fill: '#e5e7eb',
+      fill: '#ef4444',
       createdBy: username || 'Guest',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -205,19 +210,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     <div
       className="glass-panel main-toolbar-dock"
       style={{
-        position: 'absolute',
-        bottom: 24,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        height: 56,
-        padding: '0 12px',
+        position: 'fixed',
+        left: 16,
+        top: '50%',
+        transform: 'translateY(-50%)',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        flexWrap: 'nowrap',
-        overflow: 'visible',
-        gap: 6,
-        maxWidth: 'calc(100vw - 24px)',
-        zIndex: 100,
+        gap: 8,
+        padding: '10px 6px',
+        zIndex: 9999,
       }}
     >
       {/* Select / Move */}
@@ -247,7 +249,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <Pencil size={18} />
       </button>
 
-      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
+      <div className="toolbar-divider" />
 
       {/* Add Text */}
       <button title="Add Text" className="tool-btn" onClick={handleAddText}>
@@ -271,18 +273,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {isShapeFlyoutOpen && (
           <div
-            className="glass-panel animate-fade-in"
+            className="glass-panel animate-fade-in shape-flyout-popover"
             style={{
-              position: 'absolute',
-              bottom: 64,
-              left: '50%',
-              transform: 'translateX(-50%)',
               padding: 8,
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
               minWidth: 150,
-              zIndex: 200,
             }}
           >
             <button
@@ -359,7 +356,30 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <Mic size={18} />
       </button>
 
-      <div style={{ width: 1, height: 24, background: 'var(--bg-panel-border)', margin: '0 4px', flexShrink: 0 }} />
+      {/* Physics Engine Toggle */}
+      {setIsPhysicsEnabled && (
+        <button
+          title={isPhysicsEnabled ? 'Physics Engine: Active (Click to Disable)' : 'Physics Engine: Disabled (Click to Enable)'}
+          className={`tool-btn ${isPhysicsEnabled ? 'active' : ''}`}
+          onClick={() => setIsPhysicsEnabled(!isPhysicsEnabled)}
+          style={{
+            color: isPhysicsEnabled ? '#f59e0b' : undefined,
+            borderColor: isPhysicsEnabled ? '#f59e0b' : undefined,
+          }}
+        >
+          <Zap size={18} color={isPhysicsEnabled ? '#f59e0b' : undefined} />
+        </button>
+      )}
+
+      {/* Spawn 100 Objects Button */}
+      <button
+        title="Spawn 100 Physics Benchmark Objects"
+        className="tool-btn"
+        onClick={handleSpawn100Objects}
+        style={{ color: '#f59e0b' }}
+      >
+        <Sparkles size={18} color="#f59e0b" />
+      </button>
 
       {/* Secondary Overflow Options Menu (...) */}
       <div style={{ position: 'relative' }}>
@@ -373,40 +393,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         >
           <MoreHorizontal size={18} />
         </button>
-
-        {isOverflowOpen && (
-          <div
-            className="glass-panel animate-fade-in"
-            style={{
-              position: 'absolute',
-              bottom: 64,
-              right: 0,
-              padding: 8,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              minWidth: 190,
-              zIndex: 200,
-            }}
-          >
-            <button
-              onClick={handleSpawn100Objects}
-              className="tool-btn"
-              style={{
-                width: '100%',
-                height: 36,
-                justifyContent: 'flex-start',
-                padding: '0 12px',
-                gap: 10,
-                fontSize: 13,
-                color: '#f59e0b',
-              }}
-            >
-              <Zap size={16} color="#f59e0b" />
-              <span>Spawn 100 Objects</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

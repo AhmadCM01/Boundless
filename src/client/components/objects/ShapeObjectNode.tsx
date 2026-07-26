@@ -8,6 +8,9 @@ interface Props {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (patch: Partial<ShapeObject>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
 }
 
 export const ShapeObjectNode: React.FC<Props> = ({
@@ -15,6 +18,9 @@ export const ShapeObjectNode: React.FC<Props> = ({
   isSelected,
   onSelect,
   onChange,
+  onDragStart,
+  onDragMove,
+  onDragEnd: onDragEndProp,
 }) => {
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -60,9 +66,9 @@ export const ShapeObjectNode: React.FC<Props> = ({
         return (
           <Circle
             {...commonProps}
-            radius={Math.min(object.width, object.height) / 2}
-            x={object.width / 2}
-            y={object.height / 2}
+            radius={object.width / 2}
+            offsetX={-object.width / 2}
+            offsetY={-object.height / 2}
           />
         );
       case 'star':
@@ -72,19 +78,15 @@ export const ShapeObjectNode: React.FC<Props> = ({
             numPoints={5}
             innerRadius={object.width / 4}
             outerRadius={object.width / 2}
-            x={object.width / 2}
-            y={object.height / 2}
+            offsetX={-object.width / 2}
+            offsetY={-object.height / 2}
           />
         );
       case 'triangle':
         return (
           <Line
             {...commonProps}
-            points={[
-              object.width / 2, 0,
-              object.width, object.height,
-              0, object.height,
-            ]}
+            points={[object.width / 2, 0, 0, object.height, object.width, object.height]}
             closed
           />
         );
@@ -128,11 +130,14 @@ export const ShapeObjectNode: React.FC<Props> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragEnd={(e) => {
           onChange({
             x: e.target.x(),
             y: e.target.y(),
           });
+          if (onDragEndProp) onDragEndProp(e);
         }}
         onTransformEnd={handleTransformEnd}
       >
@@ -142,6 +147,8 @@ export const ShapeObjectNode: React.FC<Props> = ({
       {isSelected && (
         <Transformer
           ref={trRef}
+          rotateEnabled={true}
+          onTransformEnd={handleTransformEnd}
           boundBoxFunc={(oldBox, newBox) => {
             if (newBox.width < 20 || newBox.height < 20) return oldBox;
             return newBox;

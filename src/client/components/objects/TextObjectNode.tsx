@@ -8,6 +8,9 @@ interface Props {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (patch: Partial<TextObject>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
 }
 
 export const TextObjectNode: React.FC<Props> = ({
@@ -15,6 +18,9 @@ export const TextObjectNode: React.FC<Props> = ({
   isSelected,
   onSelect,
   onChange,
+  onDragStart,
+  onDragMove,
+  onDragEnd: onDragEndProp,
 }) => {
   const groupRef = useRef<Konva.Group>(null);
   const textRef = useRef<Konva.Text>(null);
@@ -56,26 +62,38 @@ export const TextObjectNode: React.FC<Props> = ({
           e.cancelBubble = true;
           handleTriggerEdit();
         }}
-        onDragEnd={() => {
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={(e) => {
           if (groupRef.current) {
             onChange({
               x: groupRef.current.x(),
               y: groupRef.current.y(),
             });
           }
+          if (onDragEndProp) onDragEndProp(e);
         }}
         onTransformEnd={() => {
           const group = groupRef.current;
           if (group) {
             const scaleX = group.scaleX();
+            const scaleY = group.scaleY();
             group.scaleX(1);
             group.scaleY(1);
+
             const baseWidth = object?.width || textRef.current?.width() || 200;
-            const newWidth = Math.max(50, baseWidth * scaleX);
+            const newWidth = Math.max(60, Math.round(baseWidth * scaleX));
+            
+            // If scaleY is modified (corner scaling), adjust font size proportionally
+            const isCornerScale = Math.abs(scaleY - 1) > 0.05;
+            const currentFontSize = object?.fontSize || 20;
+            const newFontSize = isCornerScale ? Math.max(12, Math.round(currentFontSize * scaleY)) : currentFontSize;
+
             onChange({
               x: group.x(),
               y: group.y(),
               width: newWidth,
+              fontSize: newFontSize,
               rotation: group.rotation(),
             });
           }
@@ -83,11 +101,20 @@ export const TextObjectNode: React.FC<Props> = ({
       >
         <Text
           ref={textRef}
-          text={object?.text || ''}
+          text={
+            object?.textTransform === 'uppercase'
+              ? (object?.text || '').toUpperCase()
+              : object?.textTransform === 'lowercase'
+              ? (object?.text || '').toLowerCase()
+              : object?.text || ''
+          }
           fontSize={object?.fontSize || 20}
           fontFamily={object?.fontFamily || 'Inter'}
-          fill={object?.fill || '#e5e7eb'}
-          width={object?.width}
+          fontStyle={`${object?.fontWeight || 'normal'} ${object?.fontStyle || 'normal'}`.trim()}
+          fill={object?.fill || '#ef4444'}
+          align={(object?.textAlign as any) || 'left'}
+          textDecoration={object?.textDecoration || ''}
+          width={object?.width || undefined}
           wrap="word"
         />
       </Group>
@@ -95,6 +122,9 @@ export const TextObjectNode: React.FC<Props> = ({
       {isSelected && (
         <Transformer
           ref={trRef}
+          rotateEnabled={true}
+          onTransformEnd={handleTransformEnd}
+          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right', 'middle-left', 'middle-right']}
           shouldOverdrawWholeArea={true}
           onClick={(e) => {
             e.cancelBubble = true;
@@ -105,7 +135,7 @@ export const TextObjectNode: React.FC<Props> = ({
             handleTriggerEdit();
           }}
           boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 50) return oldBox;
+            if (newBox.width < 50 || newBox.height < 20) return oldBox;
             return newBox;
           }}
         />

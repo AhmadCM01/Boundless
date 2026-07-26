@@ -29,9 +29,10 @@ interface CanvasProps {
   onOpenAudioRecorder: () => void;
   stageRef: React.RefObject<Konva.Stage | null>;
   followingUserId: string | null;
+  isPhysicsEnabled?: boolean;
 }
 
-// Background Grid Component
+// Background Grid Component — renders infinitely in world space to cover entire viewport
 const BackgroundGrid: React.FC<{
   width: number;
   height: number;
@@ -39,20 +40,28 @@ const BackgroundGrid: React.FC<{
   stageY: number;
   zoom: number;
 }> = ({ width, height, stageX, stageY, zoom }) => {
-  const gridSize = 40 * (zoom || 1);
-  const startX = ((stageX || 0) % gridSize) - gridSize;
-  const startY = ((stageY || 0) % gridSize) - gridSize;
+  const z = zoom || 1;
+  const gridSpacing = 40;
+
+  // Calculate visible viewport bounds in world coordinates with 500px safety margin
+  const minWorldX = Math.floor((-stageX / z - 500) / gridSpacing) * gridSpacing;
+  const maxWorldX = Math.ceil(((width - stageX) / z + 500) / gridSpacing) * gridSpacing;
+  const minWorldY = Math.floor((-stageY / z - 500) / gridSpacing) * gridSpacing;
+  const maxWorldY = Math.ceil(((height - stageY) / z + 500) / gridSpacing) * gridSpacing;
+
+  const isLightMode = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
+  const dotColor = isLightMode ? 'rgba(0, 0, 0, 0.22)' : 'rgba(255, 255, 255, 0.25)';
 
   const dots = [];
-  for (let x = startX; x < width + gridSize; x += gridSize) {
-    for (let y = startY; y < height + gridSize; y += gridSize) {
+  for (let x = minWorldX; x <= maxWorldX; x += gridSpacing) {
+    for (let y = minWorldY; y <= maxWorldY; y += gridSpacing) {
       dots.push(
         <Circle
-          key={`dot_${x}_${y}`}
+          key={`dot_${Math.round(x)}_${Math.round(y)}`}
           x={x}
           y={y}
-          radius={1.5}
-          fill="rgba(99, 102, 241, 0.2)"
+          radius={1.75}
+          fill={dotColor}
           listening={false}
         />
       );
@@ -77,8 +86,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   onOpenAudioRecorder,
   stageRef,
   followingUserId,
+  isPhysicsEnabled = false,
 }) => {
-  const { canvasObjects, updateObject, updateCursor, updateViewport, onlineUsers, addObject, username } = useRoom();
+  const { canvasObjects, updateObject, updateCursor, updateViewport, onlineUsers, addObject, username, doc } = useRoom();
   const [isPanning, setIsPanning] = useState(false);
   const [isDrawingPen, setIsDrawingPen] = useState(false);
   const [currentPenPoints, setCurrentPenPoints] = useState<number[]>([]);
@@ -103,18 +113,197 @@ export const Canvas: React.FC<CanvasProps> = ({
     height: typeof window !== 'undefined' ? window.innerHeight : 800,
   });
 
-  // Physics loop animation frame
-  useEffect(() => {
-    let animId: number;
-    const loop = () => {
-      physicsEngine.stepSimulation(canvasObjects, (id, x, y) => {
-        updateObject(id, { x, y });
+  // Direct Konva Node References Map for zero re-render 60 FPS performance
+  const nodesRef = useRef<Map<string, Konva.Group>>(new Map());
+  const dragVelocities = useRef<Map<string, { startDraggedX: number; startDraggedY: number; lastX: number; lastY: number; lastTime: number; vx: number; vy: number }>>(new Map());
+  const startPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const lastBroadcastRef = useRef<number>(0);
+  const currentUserId = username || 'guest_user';
+
+  const handleNodeDragStart = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
+    const activeIds = selectedIds && selectedIds.includes(id) ? selectedIds : [id];
+    startPositionsRef.current.clear();
+    activeIds.forEach((targetId) => {
+      const targetObj = canvasObjects.get(targetId);
+      if (targetObj) {
+        startPositionsRef.current.set(targetId, { x: targetObj.x, y: targetObj.y });
+      }
+    });
+
+    const absPos = e.target.getAbsolutePosition();
+
+    dragVelocities.current.set(id, {
+      startDraggedX: absPos.x,
+      startDraggedY: absPos.y,
+      lastX: absPos.x,
+      lastY: absPos.y,
+      lastTime: Date.now(),
+      vx: 0,
+      vy: 0,
+    });
+
+    if (doc) {
+      doc.transact(() => {
+        activeIds.forEach((targetId) => {
+          updateObject(targetId, { isKinematic: true, physicsOwner: currentUserId });
+        });
       });
+    }
+  };
+
+  const handleNodeDragMove = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
+    const activeIds = selectedIds && selectedIds.includes(id) ? selectedIds : [id];
+    const record = dragVelocities.current.get(id);
+    const now = Date.now();
+    if (record) {
+      const absPos = e.target.getAbsolutePosition();
+      const dt = Math.max(12, now - record.lastTime);
+      const dx = absPos.x - record.lastX;
+      const dy = absPos.y - record.lastY;
+      record.vx = (dx / dt) * 16.6;
+      record.vy = (dy / dt) * 16.6;
+      record.lastX = absPos.x;
+      record.lastY = absPos.y;
+      record.lastTime = now;
+
+      // Synchronize position of ALL selected objects relative to drag start
+      const currentZoom = zoom || 1;
+      const deltaX = (absPos.x - record.startDraggedX) / currentZoom;
+      const deltaY = (absPos.y - record.startDraggedY) / currentZoom;
+
+      activeIds.forEach((targetId) => {
+        if (targetId !== id) {
+          const start = startPositionsRef.current.get(targetId);
+          if (start) {
+            const groupNode = nodesRef.current.get(targetId);
+            if (groupNode) {
+              groupNode.position({ x: start.x + deltaX, y: start.y + deltaY });
+              groupNode.getLayer()?.batchDraw();
+            }
+          }
+        }
+      });
+    }
+  };
+
+  const handleNodeDragEnd = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
+    const activeIds = selectedIds && selectedIds.includes(id) ? selectedIds : [id];
+    const record = dragVelocities.current.get(id);
+    const absPos = e.target.getAbsolutePosition();
+    const vx = record?.vx || 0;
+    const vy = record?.vy || 0;
+    const speed = Math.sqrt(vx * vx + vy * vy);
+
+    const currentZoom = zoom || 1;
+    const deltaX = record ? (absPos.x - record.startDraggedX) / currentZoom : 0;
+    const deltaY = record ? (absPos.y - record.startDraggedY) / currentZoom : 0;
+
+    if (doc) {
+      doc.transact(() => {
+        activeIds.forEach((targetId) => {
+          const start = startPositionsRef.current.get(targetId);
+          const obj = canvasObjects.get(targetId);
+          const finalX = start ? start.x + deltaX : (obj?.x || 0);
+          const finalY = start ? start.y + deltaY : (obj?.y || 0);
+
+          updateObject(targetId, {
+            x: Math.round(finalX),
+            y: Math.round(finalY),
+            isKinematic: false,
+            physicsOwner: isPhysicsEnabled && speed > 0.05 ? currentUserId : undefined,
+          });
+
+          if (isPhysicsEnabled && speed > 0.05) {
+            physicsEngine.throwObject(targetId, vx * 2.5, vy * 2.5);
+          }
+        });
+      });
+    }
+
+    dragVelocities.current.delete(id);
+  };
+
+  // Canvas Objects Ref for stable 60 FPS animation loop without hook teardowns
+  const canvasObjectsRef = useRef(canvasObjects);
+  useEffect(() => {
+    canvasObjectsRef.current = canvasObjects;
+  }, [canvasObjects]);
+
+  // 60 FPS Physics Engine Loop
+  useEffect(() => {
+    if (!isPhysicsEnabled) {
+      physicsEngine.disable();
+      return;
+    }
+
+    physicsEngine.enable();
+    let animId: number;
+
+    const loop = () => {
+      const currentCanvasObjects = canvasObjectsRef.current;
+
+      // 1. Sync Matter.js bodies with current canvas state
+      physicsEngine.syncObjects(currentCanvasObjects, currentUserId);
+
+      // 2. Advance local Matter.js physics 60 FPS step
+      const updates = physicsEngine.stepSimulation(currentCanvasObjects, currentUserId);
+
+      // 3. Update canvas object positions in state
+      if (updates.length > 0) {
+        if (doc) {
+          doc.transact(() => {
+            updates.forEach((u) => {
+              updateObject(u.id, {
+                x: u.x,
+                y: u.y,
+                rotation: u.rotation,
+                physicsOwner: u.isResting ? undefined : currentUserId,
+              });
+            });
+          });
+        } else {
+          updates.forEach((u) => {
+            updateObject(u.id, {
+              x: u.x,
+              y: u.y,
+              rotation: u.rotation,
+              physicsOwner: u.isResting ? undefined : currentUserId,
+            });
+          });
+        }
+      }
+
       animId = requestAnimationFrame(loop);
     };
+
     animId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animId);
-  }, [canvasObjects, updateObject]);
+
+    // Teardown: Stop animation loop and clear Matter.js memory
+    return () => {
+      cancelAnimationFrame(animId);
+      physicsEngine.disable();
+    };
+  }, [isPhysicsEnabled, currentUserId, doc, updateObject]);
+
+  // Remote Client Lerp Smoothing Anti-Stutter (for unowned moving objects)
+  useEffect(() => {
+    canvasObjects.forEach((obj, id) => {
+      const isRemoteOwned = obj.physicsOwner && obj.physicsOwner !== currentUserId;
+      if (isRemoteOwned) {
+        const groupNode = nodesRef.current.get(id);
+        if (groupNode) {
+          // Smoothly lerp position over ~66ms using Konva.Tween
+          groupNode.to({
+            x: obj.x,
+            y: obj.y,
+            rotation: obj.rotation || 0,
+            duration: 0.066,
+            easing: Konva.Easings.Linear,
+          });
+        }
+      }
+    });
+  }, [canvasObjects, currentUserId]);
 
   // Lock camera to followed collaborator's viewport
   useEffect(() => {
@@ -384,46 +573,36 @@ export const Canvas: React.FC<CanvasProps> = ({
             };
             const onChange = (patch: Partial<CanvasObject>) => updateObject(obj.id, patch);
 
-            switch (obj.type) {
-              case 'text':
-                return (
-                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
-                    <TextObjectNode object={obj as TextObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
-                  </CanvasObjectErrorBoundary>
-                );
-              case 'shape':
-                return (
-                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
-                    <ShapeObjectNode object={obj as ShapeObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
-                  </CanvasObjectErrorBoundary>
-                );
-              case 'sticky':
-                return (
-                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
-                    <StickyObjectNode object={obj as StickyObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
-                  </CanvasObjectErrorBoundary>
-                );
-              case 'image':
-                return (
-                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
-                    <ImageObjectNode object={obj as ImageObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
-                  </CanvasObjectErrorBoundary>
-                );
-              case 'audio':
-                return (
-                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
-                    <AudioObjectNode object={obj as AudioObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} stageX={stageX} stageY={stageY} zoom={zoom} />
-                  </CanvasObjectErrorBoundary>
-                );
-              case 'pen':
-                return (
-                  <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
-                    <PenObjectNode object={obj as PenObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />
-                  </CanvasObjectErrorBoundary>
-                );
-              default:
-                return null;
-            }
+            const nodeDragProps = {
+              onDragStart: (e: any) => handleNodeDragStart(obj.id, e),
+              onDragMove: (e: any) => handleNodeDragMove(obj.id, e),
+              onDragEnd: (e: any) => handleNodeDragEnd(obj.id, e),
+            };
+
+            const renderNode = () => {
+              switch (obj.type) {
+                case 'text':
+                  return <TextObjectNode object={obj as TextObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} {...nodeDragProps} />;
+                case 'shape':
+                  return <ShapeObjectNode object={obj as ShapeObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} {...nodeDragProps} />;
+                case 'sticky':
+                  return <StickyObjectNode object={obj as StickyObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} {...nodeDragProps} />;
+                case 'image':
+                  return <ImageObjectNode object={obj as ImageObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} {...nodeDragProps} />;
+                case 'audio':
+                  return <AudioObjectNode object={obj as AudioObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} stageX={stageX} stageY={stageY} zoom={zoom} />;
+                case 'pen':
+                  return <PenObjectNode object={obj as PenObject} isSelected={isSelected} onSelect={onSelect} onChange={onChange} />;
+                default:
+                  return null;
+              }
+            };
+
+            return (
+              <CanvasObjectErrorBoundary key={obj.id} objectId={obj.id} x={obj.x} y={obj.y}>
+                {renderNode()}
+              </CanvasObjectErrorBoundary>
+            );
           })}
 
           {/* Active Freehand Pen Stroke Overlay */}

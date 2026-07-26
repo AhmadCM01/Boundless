@@ -8,6 +8,9 @@ interface Props {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (patch: Partial<ImageObject>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
 }
 
 export const ImageObjectNode: React.FC<Props> = ({
@@ -15,6 +18,9 @@ export const ImageObjectNode: React.FC<Props> = ({
   isSelected,
   onSelect,
   onChange,
+  onDragStart,
+  onDragMove,
+  onDragEnd: onDragEndProp,
 }) => {
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   const imageRef = useRef<Konva.Image>(null);
@@ -45,11 +51,14 @@ export const ImageObjectNode: React.FC<Props> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragEnd={(e) => {
           onChange({
             x: e.target.x(),
             y: e.target.y(),
           });
+          if (onDragEndProp) onDragEndProp(e);
         }}
       >
         <KonvaImage
@@ -84,6 +93,23 @@ export const ImageObjectNode: React.FC<Props> = ({
         <Transformer
           ref={trRef}
           keepRatio
+          rotateEnabled={true}
+          onTransformEnd={() => {
+            const node = imageRef.current;
+            if (node) {
+              const scaleX = node.scaleX();
+              const scaleY = node.scaleY();
+              node.scaleX(1);
+              node.scaleY(1);
+              onChange({
+                x: Math.round(node.x()),
+                y: Math.round(node.y()),
+                width: Math.max(40, Math.round(node.width() * scaleX)),
+                height: Math.max(40, Math.round(node.height() * scaleY)),
+                rotation: Math.round(node.rotation()),
+              });
+            }
+          }}
           boundBoxFunc={(oldBox, newBox) => {
             if (newBox.width < 40 || newBox.height < 40) return oldBox;
             return newBox;

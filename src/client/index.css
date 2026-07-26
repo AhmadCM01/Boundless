@@ -1,25 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap');
 
 :root, [data-theme="dark"] {
-  --bg-dark: #121318;
-  --bg-panel: rgba(22, 24, 34, 0.85);
-  --bg-panel-border: rgba(255, 255, 255, 0.1);
+  --bg-dark: #111827;
+  --bg-panel: rgba(17, 24, 39, 0.88);
+  --bg-panel-border: rgba(255, 255, 255, 0.12);
   --bg-input: rgba(0, 0, 0, 0.4);
-  --input-border: rgba(255, 255, 255, 0.15);
-  --accent-primary: #3f3f46;
-  --accent-primary-hover: #52525b;
-  --accent-glow: rgba(255, 255, 255, 0.08);
+  --input-border: rgba(255, 255, 255, 0.18);
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #4f46e5;
+  --accent-glow: rgba(99, 102, 241, 0.2);
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
   --text-heading: #ffffff;
-  --canvas-text-muted: #a1a1aa;
-  --canvas-text-fill: #e5e7eb;
-  --btn-hover-bg: rgba(255, 255, 255, 0.08);
-  --grid-dot: rgba(255, 255, 255, 0.15);
-  --minimap-bg: rgba(12, 14, 22, 0.85);
-  --minimap-border: rgba(255, 255, 255, 0.15);
-  --modal-backdrop: rgba(5, 7, 10, 0.85);
-  --shadow-color: rgba(0, 0, 0, 0.5);
+  --canvas-text-muted: #cbd5e1;
+  --canvas-text-fill: #f8fafc;
+  --btn-hover-bg: rgba(255, 255, 255, 0.1);
+  --grid-dot: rgba(255, 255, 255, 0.25);
+  --minimap-bg: rgba(17, 24, 39, 0.9);
+  --minimap-border: rgba(255, 255, 255, 0.18);
+  --modal-backdrop: rgba(10, 15, 26, 0.88);
+  --shadow-color: rgba(0, 0, 0, 0.6);
   --font-heading: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
 }
@@ -193,28 +193,210 @@ html, body, #root {
   .collaborator-avatar-extra {
     display: none !important;
   }
+}
 
-  /* Horizontally scrollable main toolbar dock with safe area inset */
-  .main-toolbar-dock {
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    max-width: calc(100vw - 24px) !important;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none !important;
+/* ==========================================
+   MIRO-STYLE SPATIAL LAYOUT  (position: fixed)
+   ========================================== */
+
+/* Floating Top Navbar Pill */
+.navbar-floating-pill {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100vw - 32px);
+  max-width: 1150px;
+  height: 56px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  overflow: visible;
+  gap: 8px;
+  border-radius: 16px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--bg-panel-border);
+  box-shadow: 0 8px 32px var(--shadow-color);
+  z-index: 9999;
+}
+
+/* Vertical Left Tool Dock */
+.main-toolbar-dock {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: auto;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-radius: 14px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--bg-panel-border);
+  box-shadow: 0 12px 32px var(--shadow-color);
+  z-index: 9999;
+  overflow: visible;
+}
+
+/* Contextual Properties Inspector (Right Floating) */
+.properties-panel-dock,
+.left-sidebar-dock {
+  position: fixed;
+  top: 88px;
+  right: 16px;
+  left: auto;
+  width: 280px;
+  max-height: calc(100dvh - 120px);
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--bg-panel-border);
+  box-shadow: 0 12px 32px var(--shadow-color);
+  z-index: 9999;
+  overflow-y: auto;
+}
+
+/* Reactions Dock (Bottom Left Floating Beside Left Dock) */
+.reactions-bar-dock {
+  position: fixed;
+  bottom: 24px;
+  left: 72px;
+  height: 44px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--bg-panel-border);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+/* Shapes Flyout Popover — pops to the RIGHT of the vertical dock */
+.shape-flyout-popover {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10000;
+}
+
+/* Toolbar Divider */
+.toolbar-divider {
+  width: 28px;
+  height: 1px;
+  background: var(--bg-panel-border);
+  margin: 2px 0;
+  flex-shrink: 0;
+}
+
+/* Zoom Dock (Bottom Center Baseline Aligned) */
+.zoom-dock {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 44px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 12px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--bg-panel-border);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+/* ==========================================
+   MOBILE (<768px) — horizontal bottom bar
+   ========================================== */
+@media (max-width: 768px) {
+  .navbar-floating-pill {
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    transform: none !important;
+    width: calc(100vw - 16px) !important;
+    max-width: none !important;
+    height: 48px !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
   }
-  .main-toolbar-dock::-webkit-scrollbar {
+
+  /* Main toolbar snaps to horizontal bottom center */
+  .main-toolbar-dock {
+    top: auto !important;
+    left: 50% !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    transform: translateX(-50%) !important;
+    flex-direction: row !important;
+    width: auto !important;
+    height: 52px !important;
+    padding: 0 10px !important;
+    border-radius: 14px !important;
+    gap: 4px !important;
+  }
+
+  .toolbar-divider {
+    width: 1px !important;
+    height: 20px !important;
+    margin: 0 2px !important;
+  }
+
+  .shape-flyout-popover {
+    left: 50% !important;
+    top: auto !important;
+    bottom: calc(100% + 8px) !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* Properties panel slides up from above the toolbar on mobile */
+  .properties-panel-dock,
+  .left-sidebar-dock {
+    top: auto !important;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-height: 240px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Zoom dock floats centered above mobile toolbar */
+  .zoom-dock {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    height: 36px !important;
+    padding: 0 4px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Hide on mobile — reactions appear as floating particles only */
+  .reactions-bar-dock {
     display: none !important;
   }
 
-  /* Position ReactionsBar above bottom toolbar on mobile with safe area inset */
-  .reactions-bar-dock {
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
-    left: 12px !important;
-    height: 44px !important;
-  }
-
-  /* Hide Minimap entirely on mobile to prevent collision */
   .minimap-dock {
     display: none !important;
   }

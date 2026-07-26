@@ -12,6 +12,7 @@ const CURSOR_COLORS = [
 interface RoomContextType {
   roomId: string;
   ydoc: Y.Doc;
+  doc: Y.Doc; // alias for ydoc — consumed by App, LeftSidebar, PropertiesPanel
   provider: WebsocketProvider | null;
   username: string | null;
   userColor: string;
@@ -25,6 +26,8 @@ interface RoomContextType {
   onlineUsers: UserAwareness[];
   isConnected: boolean;
   logout: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 const RoomContext = createContext<RoomContextType | null>(null);
@@ -77,9 +80,26 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [roomId]);
 
-  // Yjs Y.Doc instance
+  // Yjs Y.Doc instance and Y.UndoManager for CRDT Undo/Redo
   const ydoc = useMemo(() => new Y.Doc(), []);
   const yObjects = useMemo(() => ydoc.getMap<CanvasObject>('objects'), [ydoc]);
+  const undoManager = useMemo(() => new Y.UndoManager(yObjects), [yObjects]);
+
+  const undo = useCallback(() => {
+    try {
+      undoManager.undo();
+    } catch (e) {
+      console.warn('Undo operation failed:', e);
+    }
+  }, [undoManager]);
+
+  const redo = useCallback(() => {
+    try {
+      undoManager.redo();
+    } catch (e) {
+      console.warn('Redo operation failed:', e);
+    }
+  }, [undoManager]);
 
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
   const [isConnected, setIsConnected] = useState(true);
@@ -247,6 +267,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         roomId,
         ydoc,
+        doc: ydoc, // alias so all consumers can destructure `doc`
         provider,
         username,
         userColor,
@@ -260,6 +281,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         onlineUsers,
         isConnected,
         logout,
+        undo,
+        redo,
       }}
     >
       {children}
