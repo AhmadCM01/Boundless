@@ -38,6 +38,32 @@ export const TextObjectNode: React.FC<Props> = ({
     window.dispatchEvent(event);
   };
 
+  const handleTransformEnd = () => {
+    const group = groupRef.current;
+    if (group) {
+      const scaleX = group.scaleX();
+      const scaleY = group.scaleY();
+      group.scaleX(1);
+      group.scaleY(1);
+
+      const baseWidth = object?.width || textRef.current?.width() || 200;
+      const newWidth = Math.max(60, Math.round(baseWidth * scaleX));
+
+      // If scaleY is modified (corner scaling), adjust font size proportionally
+      const isCornerScale = Math.abs(scaleY - 1) > 0.05;
+      const currentFontSize = object?.fontSize || 20;
+      const newFontSize = isCornerScale ? Math.max(12, Math.round(currentFontSize * scaleY)) : currentFontSize;
+
+      onChange({
+        x: Math.round(group.x()),
+        y: Math.round(group.y()),
+        width: newWidth,
+        fontSize: newFontSize,
+        rotation: Math.round(group.rotation()),
+      });
+    }
+  };
+
   return (
     <>
       <Group
@@ -73,31 +99,7 @@ export const TextObjectNode: React.FC<Props> = ({
           }
           if (onDragEndProp) onDragEndProp(e);
         }}
-        onTransformEnd={() => {
-          const group = groupRef.current;
-          if (group) {
-            const scaleX = group.scaleX();
-            const scaleY = group.scaleY();
-            group.scaleX(1);
-            group.scaleY(1);
-
-            const baseWidth = object?.width || textRef.current?.width() || 200;
-            const newWidth = Math.max(60, Math.round(baseWidth * scaleX));
-            
-            // If scaleY is modified (corner scaling), adjust font size proportionally
-            const isCornerScale = Math.abs(scaleY - 1) > 0.05;
-            const currentFontSize = object?.fontSize || 20;
-            const newFontSize = isCornerScale ? Math.max(12, Math.round(currentFontSize * scaleY)) : currentFontSize;
-
-            onChange({
-              x: group.x(),
-              y: group.y(),
-              width: newWidth,
-              fontSize: newFontSize,
-              rotation: group.rotation(),
-            });
-          }
-        }}
+        onTransformEnd={handleTransformEnd}
       >
         <Text
           ref={textRef}
