@@ -136,13 +136,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       }
     });
 
-    const absPos = e.target.getAbsolutePosition();
+    const nodeX = e.target.x();
+    const nodeY = e.target.y();
 
     dragVelocities.current.set(id, {
-      startDraggedX: absPos.x,
-      startDraggedY: absPos.y,
-      lastX: absPos.x,
-      lastY: absPos.y,
+      startDraggedX: nodeX,
+      startDraggedY: nodeY,
+      lastX: nodeX,
+      lastY: nodeY,
       lastTime: Date.now(),
       vx: 0,
       vy: 0,
@@ -162,20 +163,20 @@ export const Canvas: React.FC<CanvasProps> = ({
     const record = dragVelocities.current.get(id);
     const now = Date.now();
     if (record) {
-      const absPos = e.target.getAbsolutePosition();
+      const nodeX = e.target.x();
+      const nodeY = e.target.y();
       const dt = Math.max(12, now - record.lastTime);
-      const dx = absPos.x - record.lastX;
-      const dy = absPos.y - record.lastY;
+      const dx = nodeX - record.lastX;
+      const dy = nodeY - record.lastY;
       record.vx = (dx / dt) * 16.6;
       record.vy = (dy / dt) * 16.6;
-      record.lastX = absPos.x;
-      record.lastY = absPos.y;
+      record.lastX = nodeX;
+      record.lastY = nodeY;
       record.lastTime = now;
 
-      // Synchronize position of ALL selected objects relative to drag start
-      const currentZoom = zoom || 1;
-      const deltaX = (absPos.x - record.startDraggedX) / currentZoom;
-      const deltaY = (absPos.y - record.startDraggedY) / currentZoom;
+      // Calculate relative delta directly in native world space (0 drift across 50%, 100%, 200% zoom)
+      const deltaX = nodeX - record.startDraggedX;
+      const deltaY = nodeY - record.startDraggedY;
 
       activeIds.forEach((targetId) => {
         if (targetId !== id) {
@@ -195,26 +196,25 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handleNodeDragEnd = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
     const activeIds = selectedIds && selectedIds.includes(id) ? selectedIds : [id];
     const record = dragVelocities.current.get(id);
-    const absPos = e.target.getAbsolutePosition();
+    const nodeX = Math.round(e.target.x());
+    const nodeY = Math.round(e.target.y());
     const vx = record?.vx || 0;
     const vy = record?.vy || 0;
     const speed = Math.sqrt(vx * vx + vy * vy);
 
-    const currentZoom = zoom || 1;
-    const deltaX = record ? (absPos.x - record.startDraggedX) / currentZoom : 0;
-    const deltaY = record ? (absPos.y - record.startDraggedY) / currentZoom : 0;
+    const deltaX = record ? nodeX - record.startDraggedX : 0;
+    const deltaY = record ? nodeY - record.startDraggedY : 0;
 
     if (doc) {
       doc.transact(() => {
         activeIds.forEach((targetId) => {
           const start = startPositionsRef.current.get(targetId);
-          const obj = canvasObjects.get(targetId);
-          const finalX = start ? start.x + deltaX : (obj?.x || 0);
-          const finalY = start ? start.y + deltaY : (obj?.y || 0);
+          const finalX = start ? Math.round(start.x + deltaX) : nodeX;
+          const finalY = start ? Math.round(start.y + deltaY) : nodeY;
 
           updateObject(targetId, {
-            x: Math.round(finalX),
-            y: Math.round(finalY),
+            x: finalX,
+            y: finalY,
             isKinematic: false,
             physicsOwner: isPhysicsEnabled && speed > 0.05 ? currentUserId : undefined,
           });

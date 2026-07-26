@@ -54,10 +54,6 @@ export const ImageObjectNode: React.FC<Props> = ({
         onDragStart={onDragStart}
         onDragMove={onDragMove}
         onDragEnd={(e) => {
-          onChange({
-            x: e.target.x(),
-            y: e.target.y(),
-          });
           if (onDragEndProp) onDragEndProp(e);
         }}
       >

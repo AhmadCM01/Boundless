@@ -91,12 +91,6 @@ export const TextObjectNode: React.FC<Props> = ({
         onDragStart={onDragStart}
         onDragMove={onDragMove}
         onDragEnd={(e) => {
-          if (groupRef.current) {
-            onChange({
-              x: groupRef.current.x(),
-              y: groupRef.current.y(),
-            });
-          }
           if (onDragEndProp) onDragEndProp(e);
         }}
         onTransformEnd={handleTransformEnd}
