@@ -23,6 +23,7 @@ export const ImageObjectNode: React.FC<Props> = ({
   onDragEnd: onDragEndProp,
 }) => {
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
+  const groupRef = useRef<Konva.Group>(null);
   const imageRef = useRef<Konva.Image>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
@@ -36,15 +37,38 @@ export const ImageObjectNode: React.FC<Props> = ({
   }, [object.src]);
 
   useEffect(() => {
-    if (isSelected && trRef.current && imageRef.current) {
-      trRef.current.nodes([imageRef.current]);
+    if (isSelected && trRef.current && groupRef.current) {
+      trRef.current.nodes([groupRef.current]);
       trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
 
+  const handleTransformEnd = () => {
+    const group = groupRef.current;
+    if (group) {
+      const newX = Math.round(group.x());
+      const newY = Math.round(group.y());
+      const newRotation = Math.round(group.rotation());
+      const scaleX = group.scaleX();
+      const scaleY = group.scaleY();
+
+      group.scaleX(1);
+      group.scaleY(1);
+
+      onChange({
+        x: newX,
+        y: newY,
+        width: Math.max(40, Math.round((object.width || 100) * scaleX)),
+        height: Math.max(40, Math.round((object.height || 100) * scaleY)),
+        rotation: newRotation,
+      });
+    }
+  };
+
   return (
     <>
       <Group
+        ref={groupRef}
         x={object.x}
         y={object.y}
         rotation={object.rotation}
@@ -56,6 +80,7 @@ export const ImageObjectNode: React.FC<Props> = ({
         onDragEnd={(e) => {
           if (onDragEndProp) onDragEndProp(e);
         }}
+        onTransformEnd={handleTransformEnd}
       >
         <KonvaImage
           ref={imageRef}
@@ -66,22 +91,6 @@ export const ImageObjectNode: React.FC<Props> = ({
           shadowColor="rgba(0, 0, 0, 0.4)"
           shadowBlur={12}
           shadowOffsetY={4}
-          onTransformEnd={() => {
-            const node = imageRef.current;
-            if (node) {
-              const scaleX = node.scaleX();
-              const scaleY = node.scaleY();
-              node.scaleX(1);
-              node.scaleY(1);
-              onChange({
-                x: node.x(),
-                y: node.y(),
-                width: Math.max(40, node.width() * scaleX),
-                height: Math.max(40, node.height() * scaleY),
-                rotation: node.rotation(),
-              });
-            }
-          }}
         />
       </Group>
 
@@ -90,22 +99,7 @@ export const ImageObjectNode: React.FC<Props> = ({
           ref={trRef}
           keepRatio
           rotateEnabled={true}
-          onTransformEnd={() => {
-            const node = imageRef.current;
-            if (node) {
-              const scaleX = node.scaleX();
-              const scaleY = node.scaleY();
-              node.scaleX(1);
-              node.scaleY(1);
-              onChange({
-                x: Math.round(node.x()),
-                y: Math.round(node.y()),
-                width: Math.max(40, Math.round(node.width() * scaleX)),
-                height: Math.max(40, Math.round(node.height() * scaleY)),
-                rotation: Math.round(node.rotation()),
-              });
-            }
-          }}
+          onTransformEnd={handleTransformEnd}
           boundBoxFunc={(oldBox, newBox) => {
             if (newBox.width < 40 || newBox.height < 40) return oldBox;
             return newBox;

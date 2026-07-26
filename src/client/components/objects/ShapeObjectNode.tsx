@@ -22,12 +22,13 @@ export const ShapeObjectNode: React.FC<Props> = ({
   onDragMove,
   onDragEnd: onDragEndProp,
 }) => {
+  const groupRef = useRef<Konva.Group>(null);
   const shapeRef = useRef<any>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
-    if (isSelected && trRef.current && shapeRef.current) {
-      trRef.current.nodes([shapeRef.current]);
+    if (isSelected && trRef.current && groupRef.current) {
+      trRef.current.nodes([groupRef.current]);
       trRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
@@ -40,22 +41,30 @@ export const ShapeObjectNode: React.FC<Props> = ({
     shadowColor: 'rgba(0,0,0,0.3)',
     shadowBlur: 10,
     shadowOffsetY: 4,
-    perfectDrawEnabled: false, // Ensures crisp line rendering across zoom levels
+    perfectDrawEnabled: false,
   };
 
   const handleTransformEnd = () => {
-    const node = shapeRef.current;
-    if (node) {
-      const scaleX = node.scaleX();
-      const scaleY = node.scaleY();
-      node.scaleX(1);
-      node.scaleY(1);
+    const group = groupRef.current;
+    if (group) {
+      const newX = Math.round(group.x());
+      const newY = Math.round(group.y());
+      const newRotation = Math.round(group.rotation());
+      const scaleX = group.scaleX();
+      const scaleY = group.scaleY();
+
+      group.scaleX(1);
+      group.scaleY(1);
+
+      const newWidth = Math.max(20, Math.round((object.width || 100) * scaleX));
+      const newHeight = Math.max(20, Math.round((object.height || 100) * scaleY));
+
       onChange({
-        x: node.x(),
-        y: node.y(),
-        width: Math.max(20, object.width * scaleX),
-        height: Math.max(20, object.height * scaleY),
-        rotation: node.rotation(),
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+        rotation: newRotation,
       });
     }
   };
@@ -124,6 +133,7 @@ export const ShapeObjectNode: React.FC<Props> = ({
   return (
     <>
       <Group
+        ref={groupRef}
         x={object.x}
         y={object.y}
         rotation={object.rotation}

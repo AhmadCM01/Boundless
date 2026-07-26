@@ -40,16 +40,21 @@ export const StickyObjectNode: React.FC<Props> = ({
   const handleTransformEnd = () => {
     const group = groupRef.current;
     if (group) {
+      const newX = Math.round(group.x());
+      const newY = Math.round(group.y());
+      const newRotation = Math.round(group.rotation());
       const scaleX = group.scaleX();
       const scaleY = group.scaleY();
+
       group.scaleX(1);
       group.scaleY(1);
+
       onChange({
-        x: Math.round(group.x()),
-        y: Math.round(group.y()),
+        x: newX,
+        y: newY,
         width: Math.max(100, Math.round((object.width || 180) * scaleX)),
         height: Math.max(100, Math.round((object.height || 180) * scaleY)),
-        rotation: Math.round(group.rotation()),
+        rotation: newRotation,
       });
     }
   };

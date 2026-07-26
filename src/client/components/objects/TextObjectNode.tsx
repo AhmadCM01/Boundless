@@ -41,8 +41,12 @@ export const TextObjectNode: React.FC<Props> = ({
   const handleTransformEnd = () => {
     const group = groupRef.current;
     if (group) {
+      const newX = Math.round(group.x());
+      const newY = Math.round(group.y());
+      const newRotation = Math.round(group.rotation());
       const scaleX = group.scaleX();
       const scaleY = group.scaleY();
+
       group.scaleX(1);
       group.scaleY(1);
 
@@ -55,11 +59,11 @@ export const TextObjectNode: React.FC<Props> = ({
       const newFontSize = isCornerScale ? Math.max(12, Math.round(currentFontSize * scaleY)) : currentFontSize;
 
       onChange({
-        x: Math.round(group.x()),
-        y: Math.round(group.y()),
+        x: newX,
+        y: newY,
         width: newWidth,
         fontSize: newFontSize,
-        rotation: Math.round(group.rotation()),
+        rotation: newRotation,
       });
     }
   };
