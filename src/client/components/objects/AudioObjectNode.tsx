@@ -54,7 +54,13 @@ export const AudioObjectNode: React.FC<Props> = ({
     }
   }, [object.audioUrl, object.src]);
 
-  // Spatial Proximity Volume Falloff
+  /**
+   * ─── Spatial Proximity Volume Calculation ────────────────────────────────────
+   * Calculates Euclidean distance from current canvas viewport camera center to audio card center.
+   * - Distance <= 300px: 100% full volume (1.0)
+   * - Distance >= 1500px: 0% silence (0.0)
+   * - In between: Linear spatial volume falloff `1.0 - (distance - 300) / 1200`
+   */
   useEffect(() => {
     const audio = audioInstanceRef.current;
     if (!audio) return;

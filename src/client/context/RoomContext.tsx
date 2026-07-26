@@ -80,7 +80,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [roomId]);
 
-  // Yjs Y.Doc instance and Y.UndoManager for CRDT Undo/Redo
+  /**
+   * ─── Yjs CRDT Document & Object Data Model Setup ─────────────────────────────
+   * ydoc: The root Conflict-Free Replicated Data Type (CRDT) document containing all room state.
+   * yObjects: Top-level Y.Map storing spatial canvas objects keyed by unique ID (`objects`).
+   *           Every mutation in yObjects automatically resolves concurrent edits via Yjs CRDT
+   *           Lamport timestamps without data loss or race conditions across clients.
+   * undoManager: Tracks state deltas on yObjects to provide atomic Ctrl+Z / Ctrl+Y history ops.
+   */
   const ydoc = useMemo(() => new Y.Doc(), []);
   const yObjects = useMemo(() => ydoc.getMap<CanvasObject>('objects'), [ydoc]);
   const undoManager = useMemo(() => new Y.UndoManager(yObjects), [yObjects]);

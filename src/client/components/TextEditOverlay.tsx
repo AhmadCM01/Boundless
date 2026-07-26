@@ -29,6 +29,13 @@ export const TextEditOverlay: React.FC<Props> = ({
     }
   }, [editingId, activeObj]);
 
+  /**
+   * ─── Double-Click Mount-Time Focus Guard ──────────────────────────────────────
+   * DO NOT REMOVE THIS 50ms TIMEOUT: When a user double-clicks a text object on stage,
+   * the second click event finishes bubbling through Konva after TextEditOverlay mounts.
+   * Without this 50ms delay, the browser's immediate click-focus handling immediately steals
+   * focus away from the overlay textarea, causing text editing to instantly close.
+   */
   useEffect(() => {
     if (editingId && textareaRef.current) {
       const timer = setTimeout(() => {

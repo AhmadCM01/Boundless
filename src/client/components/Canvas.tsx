@@ -43,7 +43,13 @@ const BackgroundGrid: React.FC<{
   const z = zoom || 1;
   const gridSpacing = 40;
 
-  // Calculate visible viewport bounds in world coordinates with 500px safety margin
+  /**
+   * ─── Viewport Bounds & Infinite Grid Spatial Calculation ──────────────────────
+   * Converts current screen window dimensions (width, height) and camera transform (stageX, stageY, zoom)
+   * into world-space coordinate bounds (minWorldX..maxWorldX, minWorldY..maxWorldY).
+   * Includes a 500px safety margin buffer so grid dots and spatial objects tile seamlessly 
+   * during fast panning without visible edge clipping artifacts.
+   */
   const minWorldX = Math.floor((-stageX / z - 500) / gridSpacing) * gridSpacing;
   const maxWorldX = Math.ceil(((width - stageX) / z + 500) / gridSpacing) * gridSpacing;
   const minWorldY = Math.floor((-stageY / z - 500) / gridSpacing) * gridSpacing;
@@ -223,7 +229,14 @@ export const Canvas: React.FC<CanvasProps> = ({
     dragVelocities.current.delete(id);
   };
 
-  // Canvas Objects Ref for stable 60 FPS animation loop without hook teardowns
+  /**
+   * ─── 60 FPS Physics Engine Loop & Throttled CRDT Sync ────────────────────────
+   * canvasObjectsRef: Decouples state mutations from the useEffect dependency array,
+   *                   preventing the Matter.js physics world from being torn down on every frame.
+   * stepSimulation: Advances local Matter.js rigid-body physics at 60 FPS.
+   * doc.transact: Batches position updates atomically into Yjs, ensuring remote peers receive
+   *               smooth coordinate broadcasts without desynchronization or race conditions.
+   */
   const canvasObjectsRef = useRef(canvasObjects);
   useEffect(() => {
     canvasObjectsRef.current = canvasObjects;
