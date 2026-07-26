@@ -38,6 +38,14 @@ export const TextObjectNode: React.FC<Props> = ({
     window.dispatchEvent(event);
   };
 
+  // Synchronously reset node scale to 1.0 AFTER React renders updated Yjs width/x/y/rotation
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.scaleX(1);
+      groupRef.current.scaleY(1);
+    }
+  }, [object.width, object.height, object.x, object.y, object.rotation, object.fontSize]);
+
   const handleTransformEnd = () => {
     const group = groupRef.current;
     if (group) {
@@ -46,9 +54,6 @@ export const TextObjectNode: React.FC<Props> = ({
       const newRotation = Math.round(group.rotation());
       const scaleX = group.scaleX();
       const scaleY = group.scaleY();
-
-      group.scaleX(1);
-      group.scaleY(1);
 
       const baseWidth = object?.width || textRef.current?.width() || 200;
       const newWidth = Math.max(60, Math.round(baseWidth * scaleX));
